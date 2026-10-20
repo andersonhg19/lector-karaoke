@@ -13,3 +13,4 @@ tmp_prueba/
 *.exe
 *.pdb
 tests/resultado-*.txt
+muestras/

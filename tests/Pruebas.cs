@@ -186,6 +186,44 @@ internal static class Pruebas
             Contiene("todos: asteriscos de markdown", Habla("**x**", todos), "doble asterisco x doble asterisco");
         }
 
+        // ---------- Números ----------
+        {
+            var mx = new Configuracion();                                   // es-MX: decimal con punto
+            var es = new Configuracion { VozEdge = "es-ES-AlvaroNeural" };  // es-ES: decimal con coma
+            Contiene("25.000", Habla("son 25.000 pesos", mx), "25000");
+            Contiene("25,000", Habla("son 25,000 pesos", mx), "25000");
+            Contiene("25000", Habla("son 25000 pesos", mx), "25000");
+            Contiene("1.234.567", Habla("total 1.234.567", mx), "1234567");
+            Contiene("1.234,56 en México", Habla("total 1.234,56", mx), "1234.56");
+            Contiene("1,234.56 en España", Habla("total 1,234.56", es), "1234,56");
+            Contiene("decimal 3,5 en México", Habla("vale 3,5", mx), "3.5");
+            Contiene("decimal 3.5 en España", Habla("vale 3.5", es), "3,5");
+            Contiene("0,500 es decimal", Habla("pesa 0,500 kg", mx), "0.500");
+            Contiene("versión intacta", Habla("versión 1.2.3", mx), "1.2.3");
+            Contiene("IP intacta", Habla("host 192.168.0.1", mx), "192.168.0.1");
+            Contiene("fecha intacta", Habla("el 2026-10-20", mx), "2026-10-20");
+            Contiene("hora intacta", Habla("a las 12:30", mx), "12:30");
+            Contiene("moneda", Habla("cuesta $25,000", mx), "25000 dólares");
+            Contiene("porcentaje", Habla("sube 12,5%", mx), "12.5%");
+            Contiene("negativo", Habla("saldo -25.000", mx), "25000");
+            Contiene("números sin símbolos", Habla("son 25.000 pesos", new Configuracion { Simbolos = "no" }), "25000");
+        }
+
+        // ---------- Idioma ----------
+        {
+            Cierto("inglés detectado", Preparador.EsIngles("The build failed because the tests are not passing."));
+            Cierto("español no es inglés", !Preparador.EsIngles("La compilación falló porque las pruebas no pasan."));
+            Cierto("español con términos en inglés sigue español", !Preparador.EsIngles("El pull request tiene un merge conflict en la rama de deploy."));
+            Cierto("texto corto sin pistas no es inglés", !Preparador.EsIngles("Build OK"));
+            var c = new Configuracion();
+            var ten = Preparador.Preparar("Please check the logs and try again.", c).Trozos[0];
+            var tes = Preparador.Preparar("Por favor revisa los registros.", c).Trozos[0];
+            Igual("voz para inglés", "en-US-AndrewMultilingualNeural", MotorEdge.VozPara(ten, c));
+            Igual("voz para español", "es-MX-JorgeNeural", MotorEdge.VozPara(tes, c));
+            var sin = new Configuracion { VozIngles = "" };
+            Igual("sin voz inglesa usa la principal", "es-MX-JorgeNeural", MotorEdge.VozPara(ten, sin));
+        }
+
         // ---------- Configuración ----------
         {
             string ruta = Path.Combine(Path.GetTempPath(), "lk-prueba-" + Guid.NewGuid().ToString("N") + ".ini");

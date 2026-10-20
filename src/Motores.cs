@@ -162,7 +162,7 @@ namespace LectorKaraoke
             var sb = new StringBuilder();
             sb.Append("{\"accion\":\"hablar\",\"id\":").Append(id)
               .Append(",\"texto\":").Append(Json(t.Texto))
-              .Append(",\"voz\":").Append(Json(cfg.VozEdge))
+              .Append(",\"voz\":").Append(Json(VozPara(t, cfg)))
               .Append(",\"velocidad\":").Append(Json(vel))
               .Append(",\"archivo\":").Append(Json(archivo)).Append("}");
             try { Enviar(sb.ToString()); }
@@ -211,6 +211,12 @@ namespace LectorKaraoke
             double dur = marcas.Count > 0 ? marcas[marcas.Count - 1].InicioMs + marcas[marcas.Count - 1].DuracionMs + 300 : 1000;
             Tiempos.Alinear(t, marcas, dur);
             return new Audio { Archivo = archivo, Motor = "edge", Trozo = t, DuracionMs = dur };
+        }
+
+        internal static string VozPara(Trozo t, Configuracion cfg)
+        {
+            if (!string.IsNullOrEmpty(cfg.VozIngles) && Preparador.EsIngles(t.Texto)) return cfg.VozIngles;
+            return cfg.VozEdge;
         }
 
         // Microsoft cambia a veces el acceso de edge-tts (error 403). Se intenta actualizar la librería una vez al día.

@@ -16,6 +16,7 @@ namespace LectorKaraoke
         public string Motor = "edge";               // edge | piper | sapi
         public bool UsarInternet = true;
         public string VozEdge = "es-MX-JorgeNeural";
+        public string VozIngles = "en-US-AndrewMultilingualNeural";   // vacío = leer el inglés con la voz principal
         public string VozPiper = "es_MX-ald-medium";
         public string VozSapi = "";                 // vacío = la primera voz en español
         public int Velocidad = 0;                   // -50..100 (%)
@@ -121,6 +122,7 @@ namespace LectorKaraoke
                     break;
                 case "usar_internet": UsarInternet = Booleano(valor, linea, UsarInternet); break;
                 case "voz_edge": if (valor.Length > 0) VozEdge = valor; break;
+                case "voz_ingles": VozIngles = valor; break;
                 case "voz_piper": if (valor.Length > 0) VozPiper = valor; break;
                 case "voz_sapi": VozSapi = valor; break;
                 case "velocidad": Velocidad = Entero(valor, -50, 100, linea, Velocidad); break;
@@ -269,6 +271,8 @@ usar_internet = si
 ; Voces. Algunas de Edge: es-MX-JorgeNeural, es-MX-DaliaNeural,
 ; es-ES-AlvaroNeural, es-ES-ElviraNeural, es-ES-XimenaNeural
 voz_edge = es-MX-JorgeNeural
+; Voz para los trozos que están en inglés (vacío = usar la principal). Las voces Multilingual pronuncian bien ambos idiomas.
+voz_ingles = en-US-AndrewMultilingualNeural
 voz_piper = es_MX-ald-medium
 ; vacío = la primera voz de Windows en español
 voz_sapi =

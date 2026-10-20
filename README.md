@@ -17,6 +17,7 @@ Pensado para personas que usan la Lupa de Windows con mucho aumento y no alcanza
 - **Nunca habla por su cuenta.** Solo cuando presionas la tecla.
 - **No abre ventanas:** un icono en la bandeja y una capa transparente que no recibe clics ni toma el foco.
 - **Voces neuronales:** por defecto *Jorge* (`es-MX-JorgeNeural`) de Microsoft Edge. Sin internet usa **Piper** (local, voz `es_MX-ald`). Si Piper falta, usa las voces de Windows.
+- **Cifras e inglés:** `25.000`, `25,000` y `25000` se leen "veinticinco mil"; los decimales usan la forma de la voz (coma en España, punto en México) y las versiones e IP se respetan. Los trozos en inglés se leen con una voz nativa.
 - **Protege secretos:** contraseñas, tokens, claves de API, JWT, URIs con usuario y clave, y bloques de clave privada se dicen como "valor oculto" y **nunca** salen a internet.
 - **Lee bien textos técnicos:** separa `getUserById` → "get User By Id", nombra los símbolos ("abre comillas… cierra comillas", "barra", "numeral", "arroba"), lee las direcciones web como "enlace dominio" y omite códigos de color ANSI, cajas, spinners y decoraciones de markdown.
 - **Portable:** todo vive en una carpeta. Para llevarlo a otro PC se copia la carpeta y se ejecuta `Configurar.exe`.
@@ -45,6 +46,9 @@ No necesita permisos de administrador ni instala nada fuera de su carpeta (salvo
 
 El menú del icono de la bandeja también permite leer o detener, abrir la configuración, reiniciar y salir.
 
+## Elegir voz
+Ejecuta `motor\python\python.exe -I motor\muestras.py`: crea en `muestras\` un mp3 por cada voz candidata (España, México, Colombia, Argentina, multilingües…) con la misma frase, y `muestras.m3u` para escucharlas seguidas. Copia el nombre de la que más te guste en `voz_edge`.
+
 ## Configuración (`config.ini`)
 
 El archivo se crea con valores comentados. **Al guardarlo, el lector lo recarga solo**; si un valor no es válido, usa el predeterminado y avisa en la bandeja.
@@ -55,6 +59,7 @@ El archivo se crea con valores comentados. **Al guardarlo, el lector lo recarga 
 | `motor` | `edge` | `edge`, `piper` o `sapi` |
 | `usar_internet` | `si` | `no` = nunca enviar texto a internet |
 | `voz_edge` | `es-MX-JorgeNeural` | También `es-MX-DaliaNeural`, `es-ES-AlvaroNeural`, `es-ES-ElviraNeural`, `es-ES-XimenaNeural`… |
+| `voz_ingles` | `en-US-AndrewMultilingualNeural` | Voz para los trozos en inglés (vacío = la principal) |
 | `velocidad` | `0` | En %, de `-50` a `100` |
 | `volumen` | `100` | De 0 a 100 |
 | `color` | `naranja` | `#RRGGBB` o un nombre: naranja, azul, verde, rojo, morado, amarillo, cian, rosado |

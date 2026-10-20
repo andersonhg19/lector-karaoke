@@ -68,8 +68,12 @@ namespace LectorKaraoke
         private static readonly Regex Hex = new Regex(@"^[0-9a-fA-F]{32,}$", RegexOptions.Compiled);
         private static readonly Regex Base64Largo = new Regex(@"^[A-Za-z0-9+/=_\-]{32,}$", RegexOptions.Compiled);
 
+        // Separador decimal que entiende la voz elegida (es-ES dice "coma", es-MX "punto").
+        [ThreadStatic] private static char separadorDecimal;
+
         public static Preparado Preparar(string original, Configuracion cfg)
         {
+            separadorDecimal = SeparadorDecimalDe(cfg.VozEdge);
             var res = new Preparado();
             if (string.IsNullOrEmpty(original)) return res;
             if (original.Length > cfg.MaxCaracteres)
@@ -355,9 +359,11 @@ namespace LectorKaraoke
             while (i < finNucleo)
             {
                 char c = t[i];
-                if (char.IsLetterOrDigit(c))
+                bool moneda = (c == '$' || c == '€' || c == '£') && i + 1 < finNucleo && char.IsDigit(t[i + 1]);
+                if (char.IsLetterOrDigit(c) || moneda)
                 {
                     int ini = i;
+                    if (moneda) i++;
                     while (i < finNucleo && ParteDePalabra(t, i, finNucleo, todos)) i++;
                     if (i == ini) i++;
                     string trozo = Limpiar(SepararIdentificador(t.Substring(ini, i - ini)));
@@ -438,8 +444,8 @@ namespace LectorKaraoke
             if (s.Length == 0) return s;
             // Fechas y números (2026-10-20, 1.234,56, 3.5) se dejan tal cual.
             bool soloNum = true;
-            foreach (char c in s) if (!(char.IsDigit(c) || c == '-' || c == '.' || c == ',' || c == ':' || c == '%' || c == '$' || c == '+')) { soloNum = false; break; }
-            if (soloNum) return s;
+            foreach (char c in s) if (!(char.IsDigit(c) || c == '-' || c == '.' || c == ',' || c == ':' || c == '%' || c == '$' || c == '+' || c == '€' || c == '£')) { soloNum = false; break; }
+            if (soloNum) return NormalizarNumero(s);
 
             var sb = new StringBuilder();
             int puntos = 0;
@@ -459,6 +465,79 @@ namespace LectorKaraoke
                 sb.Append(c);
             }
             return sb.ToString();
+        }
+
+        // ---------------- Números ----------------
+        private static readonly Regex MilesPunto = new Regex(@"^(\d{1,3})((?:\.\d{3})+)(?:,(\d+))?$", RegexOptions.Compiled);   // 25.000  1.234.567,89
+        private static readonly Regex MilesComa = new Regex(@"^(\d{1,3})((?:,\d{3})+)(?:\.(\d+))?$", RegexOptions.Compiled);    // 25,000  1,234,567.89
+        private static readonly Regex DecimalSimple = new Regex(@"^(\d+)[.,](\d+)$", RegexOptions.Compiled);                     // 3,5  3.14
+
+        internal static char SeparadorDecimalDe(string voz)
+        {
+            string v = (voz ?? "").ToLowerInvariant();
+            foreach (var pre in new[] { "es-mx", "es-us", "es-gt", "es-hn", "es-ni", "es-sv", "es-pa", "es-do", "es-pr", "en-" })
+                if (v.StartsWith(pre)) return '.';
+            return v.StartsWith("es-") ? ',' : '.';
+        }
+
+        // Quita los separadores de miles para que la voz diga "veinticinco mil" y deja el decimal en la forma de la voz.
+        // 25.000, 25,000 y 25000 -> 25000. 3,5 / 3.5 -> decimal. 1.2.3 y 192.168.0.1 (versiones, IP) se dejan.
+        internal static string NormalizarNumero(string s)
+        {
+            if (s.Length == 0) return s;
+            char dec = separadorDecimal == '\0' ? '.' : separadorDecimal;
+            string moneda = "";
+            string porciento = "";
+            string signo = "";
+            string n = s;
+            if (n[0] == '$' || n[0] == '€' || n[0] == '£')
+            {
+                moneda = n[0] == '$' ? " dólares" : n[0] == '€' ? " euros" : " libras";
+                n = n.Substring(1);
+            }
+            if (n.EndsWith("%")) { porciento = "%"; n = n.Substring(0, n.Length - 1); }
+            if (n.StartsWith("-") || n.StartsWith("+")) { signo = n.Substring(0, 1); n = n.Substring(1); }
+            if (n.Length == 0) return s;
+
+            string resultado = null;
+            var mp = MilesPunto.Match(n);
+            var mc = MilesComa.Match(n);
+            if (mp.Success && mp.Groups[1].Value != "0")
+                resultado = mp.Groups[1].Value + mp.Groups[2].Value.Replace(".", "") + (mp.Groups[3].Success ? dec + mp.Groups[3].Value : "");
+            else if (mc.Success && mc.Groups[1].Value != "0")
+                resultado = mc.Groups[1].Value + mc.Groups[2].Value.Replace(",", "") + (mc.Groups[3].Success ? dec + mc.Groups[3].Value : "");
+            else
+            {
+                var md = DecimalSimple.Match(n);
+                if (md.Success) resultado = md.Groups[1].Value + dec + md.Groups[2].Value;
+                else if (moneda.Length > 0 && Regex.IsMatch(n, @"^\d+$")) resultado = n;     // $100
+            }
+            if (resultado == null) return s;            // fechas, horas, versiones, IP: tal cual
+            return signo + resultado + porciento + moneda;
+        }
+
+        // ---------------- Idioma del trozo ----------------
+        private static readonly HashSet<string> PalabrasIngles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "the", "and", "is", "are", "to", "of", "for", "with", "this", "that", "you", "it", "be", "on", "not", "was", "were",
+          "have", "has", "will", "can", "from", "by", "an", "or", "if", "when", "what", "your", "please", "should", "would",
+          "which", "there", "their", "they", "we", "our", "my", "into", "about", "been", "but", "all", "do", "does", "did",
+          "how", "why", "where", "who", "these", "those", "than", "then", "also", "only", "just", "more", "some", "any", "no" };
+        private static readonly HashSet<string> PalabrasEspanol = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "el", "la", "los", "las", "de", "que", "y", "en", "un", "una", "es", "por", "para", "con", "se", "del", "al", "lo",
+          "como", "más", "mas", "pero", "su", "sus", "este", "esta", "esto", "son", "fue", "hay", "ya", "muy", "también", "sin",
+          "sobre", "entre", "cuando", "donde", "porque", "qué", "cómo", "si", "sí", "le", "les", "nos", "yo", "tu", "tú", "mi" };
+
+        // true si el trozo está claramente en inglés (más palabras funcionales inglesas que españolas).
+        internal static bool EsIngles(string texto)
+        {
+            int en = 0, es = 0;
+            foreach (var w0 in Regex.Split(texto, @"[^\p{L}']+"))
+            {
+                if (w0.Length == 0) continue;
+                if (PalabrasIngles.Contains(w0)) en++;
+                else if (PalabrasEspanol.Contains(w0)) es++;
+            }
+            return en >= 2 && en > es * 2;
         }
 
         private static string Limpiar(string s)

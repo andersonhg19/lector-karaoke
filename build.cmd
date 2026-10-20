@@ -19,7 +19,7 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 
 if exist tests\Pruebas.cs (
-  "%CSC%" /nologo /target:exe /platform:anycpu /out:tests\Pruebas.exe %REFS% %COMUN% src\Preparador.cs src\Tiempos.cs tests\Pruebas.cs
+  "%CSC%" /nologo /target:exe /platform:anycpu /out:tests\Pruebas.exe %REFS% %COMUN% src\Preparador.cs src\Tiempos.cs src\Motores.cs tests\Pruebas.cs
   if errorlevel 1 exit /b 1
 )
 if exist tests\PruebaMotores.cs (
