@@ -24,6 +24,14 @@ namespace LectorKaraoke
 
         public bool Reproducir() { return alias != null && Mci("play " + alias); }
 
+        // Empieza en desdeMs (se salta el silencio inicial que traen los audios de la voz).
+        public bool Reproducir(double desdeMs)
+        {
+            if (alias == null) return false;
+            if (desdeMs < 20) return Reproducir();
+            return Mci("play " + alias + " from " + ((int)desdeMs).ToString(CultureInfo.InvariantCulture)) || Reproducir();
+        }
+
         public double Posicion()
         {
             if (alias == null) return 0;

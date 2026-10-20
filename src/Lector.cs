@@ -130,7 +130,8 @@ namespace LectorKaraoke
                 int siguienteK = i + adelante;
                 if (siguienteK < trozos.Count && tareas[siguienteK] == null) tareas[siguienteK] = motores.Sintetizar(trozos[siguienteK], cfgLocal, ct);
                 Prueba("audio", "trozo=" + i + "|motor=" + a.Motor + "|tiempos=" + string.Join(",", a.Trozo.Palabras.Select(p => (int)p.InicioMs)));
-                if (!rep.Abrir(a.Archivo, cfg.Volumen) || !rep.Reproducir())
+                double inicioVoz = a.Trozo.Palabras.Count > 0 ? Math.Max(0, a.Trozo.Palabras[0].InicioMs - 40) : 0;
+                if (!rep.Abrir(a.Archivo, cfg.Volumen) || !rep.Reproducir(inicioVoz))
                 {
                     MotorEdge.Borrar(a.Archivo);
                     throw new Exception("no se pudo reproducir el audio (" + rep.UltimoError + ")");
@@ -181,6 +182,9 @@ namespace LectorKaraoke
             var actuales = new List<Rectangle>();
             bool pidiendo = false;
             var inicio = DateTime.Now;
+            // Fin de la voz: la última palabra termina; el silencio final del audio no se espera.
+            double finVoz = 0;
+            foreach (var w in t.Palabras) finVoz = Math.Max(finVoz, w.FinMs);
             while (g == generacion)
             {
                 await Task.Delay(30);
@@ -229,6 +233,7 @@ namespace LectorKaraoke
                     }
                 }
                 if (!rep.Sonando() && (DateTime.Now - inicio).TotalMilliseconds > 200) break;
+                if (finVoz > 0 && pos >= finVoz + 60) break;
             }
             if (cap.Fuente == Fuente.Accesibilidad || cap.Fuente == Fuente.Copia) capa.Ocultar();
         }

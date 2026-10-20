@@ -92,13 +92,16 @@ internal static class Pruebas
             string largo = string.Join(" ", Enumerable.Repeat("Esta es una oración de prueba bastante normal.", 40));
             var p = Preparador.Preparar(largo, cfg);
             Cierto("trozos: varios", p.Trozos.Count > 5);
-            Cierto("trozos: primero de ~3 palabras (" + p.Trozos[0].Palabras.Count + ")", p.Trozos[0].Palabras.Count <= 5 && p.Trozos[0].Texto.Length <= 40);
-            Cierto("trozos: crecen (" + p.Trozos[1].Texto.Length + " / " + p.Trozos[2].Texto.Length + ")", p.Trozos[1].Texto.Length <= 80 && p.Trozos[2].Texto.Length <= 170);
+Cierto("trozos: primero corto (" + p.Trozos[0].Texto.Length + ")", p.Trozos[0].Texto.Length <= 150);
+            Cierto("trozos: cada corte cae en una pausa natural", p.Trozos.Take(p.Trozos.Count - 1).All(t => ".,;:!?".IndexOf(t.Texto[t.Texto.Length - 1]) >= 0));
+            Igual("texto corto (texto de ayuda) va en un solo trozo", 1, Preparador.Preparar("Control de código fuente (Ctrl+Shift+G)", cfg).Trozos.Count);
+            var largoSinPausa = Preparador.Preparar(string.Join(" ", Enumerable.Repeat("palabra", 120)), cfg);
+            Cierto("texto largo sin pausas: corte de seguridad", largoSinPausa.Trozos.Count > 1 && largoSinPausa.Trozos.All(t => t.Texto.Length <= 360));
             Cierto("trozos: ninguno > 320", p.Trozos.All(t => t.Texto.Length <= 320));
             int total = p.Trozos.Sum(t => t.Palabras.Count);
             Igual("trozos: no se pierden palabras", 40 * 8, total);
             string sinPunt = string.Join(" ", Enumerable.Repeat("palabra", 300));
-            Cierto("trozos: texto sin puntuación también se corta", Preparador.Preparar(sinPunt, cfg).Trozos.All(t => t.Texto.Length <= 300));
+            Cierto("trozos: texto sin puntuación también se corta", Preparador.Preparar(sinPunt, cfg).Trozos.All(t => t.Texto.Length <= 360));
         }
         {
             var c2 = new Configuracion { MaxCaracteres = 100 };

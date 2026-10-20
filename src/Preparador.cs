@@ -586,8 +586,16 @@ namespace LectorKaraoke
         }
 
         // ---------------- 5. Trozos ----------------
+        // Cortes solo en pausas naturales: cortar a mitad de frase deja un silencio entre audios y la voz retoma
+        // con entonación de inicio de oración ("...código | fuente abre paréntesis"). Un texto corto va entero.
+        private const int TextoCorto = 160;
+
         private static List<Trozo> Trocear(List<Ficha> fichas)
         {
+            int total = 0;
+            foreach (var f in fichas) if (f.Habla.Length > 0) total += f.Habla.Length + 1;
+            bool unSoloTrozo = total <= TextoCorto;
+
             var trozos = new List<Trozo>();
             var actual = new Trozo();
             var sb = new StringBuilder();
@@ -599,19 +607,17 @@ namespace LectorKaraoke
                 sb.Append(f.Habla);
                 actual.Palabras.Add(p);
                 if (f.Secreto) actual.TeniaSecretos = true;
+                if (unSoloTrozo) continue;
 
-                // Trozos crecientes: el primero de unas 3 palabras para que la voz empiece cuanto antes
-                // (la espera del servidor crece con el largo del texto); mientras suena, se sintetizan los siguientes.
+                // Primero corto (para empezar rápido) y luego más largos, siempre en una pausa natural.
                 int n = trozos.Count;
-                int limite = n == 0 ? 22 : n == 1 ? 60 : n == 2 ? 140 : 280;
-                int minimo = n == 0 ? 10 : n == 1 ? 25 : 50;
+                int limite = n == 0 ? 90 : n == 1 ? 160 : 280;
+                int minimo = n == 0 ? 12 : 40;
                 char ult = f.Habla[f.Habla.Length - 1];
                 bool finOracion = ult == '.' || ult == '!' || ult == '?';
                 bool pausa = ult == ',' || ult == ';' || ult == ':';
-                bool corte = (finOracion && sb.Length >= minimo)
-                          || (n == 0 && actual.Palabras.Count >= 3 && sb.Length >= minimo)
-                          || (pausa && sb.Length >= Math.Max(minimo, limite - 40))
-                          || sb.Length >= limite;
+                bool corte = ((finOracion || pausa) && sb.Length >= minimo)
+                          || sb.Length >= limite + 60;            // sin ninguna pausa en mucho texto: corte de seguridad
                 if (corte)
                 {
                     actual.Texto = sb.ToString();
