@@ -16,7 +16,7 @@ Pensado para personas que usan la Lupa de Windows con mucho aumento y no alcanza
 
 - **Nunca habla por su cuenta.** Solo cuando presionas la tecla.
 - **No abre ventanas:** un icono en la bandeja y una capa transparente que no recibe clics ni toma el foco.
-- **Voces neuronales:** por defecto *Jorge* (`es-MX-JorgeNeural`) de Microsoft Edge. Sin internet usa **Piper** (local, voz `es_MX-ald`). Si Piper falta, usa las voces de Windows.
+- **Voces neuronales:** por defecto *Rémy* (`fr-FR-RemyMultilingualNeural`), una voz multilingüe de Microsoft Edge que suena nativa en español y en inglés (ver la evaluación en [`docs/VOCES.md`](docs/VOCES.md)). Sin internet usa **Piper** (local, voz `es_MX-ald`). Si Piper falta, usa las voces de Windows.
 - **Cifras e inglés:** `25.000`, `25,000` y `25000` se leen "veinticinco mil"; los decimales usan la forma de la voz (coma en España, punto en México) y las versiones e IP se respetan. Los trozos en inglés se leen con una voz nativa.
 - **Protege secretos:** contraseñas, tokens, claves de API, JWT, URIs con usuario y clave, y bloques de clave privada se dicen como "valor oculto" y **nunca** salen a internet.
 - **Lee bien textos técnicos:** separa `getUserById` → "get User By Id", nombra los símbolos ("abre comillas… cierra comillas", "barra", "numeral", "arroba"), lee las direcciones web como "enlace dominio" y omite códigos de color ANSI, cajas, spinners y decoraciones de markdown.
@@ -58,8 +58,9 @@ El archivo se crea con valores comentados. **Al guardarlo, el lector lo recarga 
 | `tecla` | `F9` | `F1`..`F24`, `Pausa` o `BloqDespl`. Si la nueva está ocupada, se mantiene la anterior y se avisa |
 | `motor` | `edge` | `edge`, `piper` o `sapi` |
 | `usar_internet` | `si` | `no` = nunca enviar texto a internet |
-| `voz_edge` | `es-MX-JorgeNeural` | También `es-MX-DaliaNeural`, `es-ES-AlvaroNeural`, `es-ES-ElviraNeural`, `es-ES-XimenaNeural`… |
-| `voz_ingles` | `en-US-AndrewMultilingualNeural` | Voz para los trozos en inglés (vacío = la principal) |
+| `voz_edge` | `fr-FR-RemyMultilingualNeural` | También `es-MX-DaliaNeural`, `es-ES-AlvaroNeural`, `es-ES-ElviraNeural`, `es-ES-XimenaNeural`… |
+| `voz_ingles` | *(vacío)* | Voz para los trozos en inglés; vacío = la principal (las multilingües leen ambos idiomas) |
+| `numeros` | `auto` | `auto`: `25.000` / `25,000` = veinticinco mil; `literal`: tal cual a la voz |
 | `velocidad` | `0` | En %, de `-50` a `100` |
 | `volumen` | `100` | De 0 a 100 |
 | `color` | `naranja` | `#RRGGBB` o un nombre: naranja, azul, verde, rojo, morado, amarillo, cian, rosado |

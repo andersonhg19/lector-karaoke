@@ -188,7 +188,7 @@ internal static class Pruebas
 
         // ---------- Números ----------
         {
-            var mx = new Configuracion();                                   // es-MX: decimal con punto
+            var mx = new Configuracion { VozEdge = "es-MX-JorgeNeural" };   // es-MX: decimal con punto
             var es = new Configuracion { VozEdge = "es-ES-AlvaroNeural" };  // es-ES: decimal con coma
             Contiene("25.000", Habla("son 25.000 pesos", mx), "25000");
             Contiene("25,000", Habla("son 25,000 pesos", mx), "25000");
@@ -207,6 +207,8 @@ internal static class Pruebas
             Contiene("porcentaje", Habla("sube 12,5%", mx), "12.5%");
             Contiene("negativo", Habla("saldo -25.000", mx), "25000");
             Contiene("números sin símbolos", Habla("son 25.000 pesos", new Configuracion { Simbolos = "no" }), "25000");
+            Contiene("numeros = literal", Habla("son 25,000 pesos", new Configuracion { Numeros = "literal" }), "25,000");
+            Contiene("voz multilingüe: decimal con punto", Habla("vale 3,5", new Configuracion()), "3.5");
         }
 
         // ---------- Idioma ----------
@@ -215,12 +217,12 @@ internal static class Pruebas
             Cierto("español no es inglés", !Preparador.EsIngles("La compilación falló porque las pruebas no pasan."));
             Cierto("español con términos en inglés sigue español", !Preparador.EsIngles("El pull request tiene un merge conflict en la rama de deploy."));
             Cierto("texto corto sin pistas no es inglés", !Preparador.EsIngles("Build OK"));
-            var c = new Configuracion();
+            var c = new Configuracion { VozEdge = "es-MX-JorgeNeural", VozIngles = "en-US-AndrewMultilingualNeural" };
             var ten = Preparador.Preparar("Please check the logs and try again.", c).Trozos[0];
             var tes = Preparador.Preparar("Por favor revisa los registros.", c).Trozos[0];
             Igual("voz para inglés", "en-US-AndrewMultilingualNeural", MotorEdge.VozPara(ten, c));
             Igual("voz para español", "es-MX-JorgeNeural", MotorEdge.VozPara(tes, c));
-            var sin = new Configuracion { VozIngles = "" };
+            var sin = new Configuracion { VozEdge = "es-MX-JorgeNeural", VozIngles = "" };
             Igual("sin voz inglesa usa la principal", "es-MX-JorgeNeural", MotorEdge.VozPara(ten, sin));
         }
 
@@ -248,6 +250,7 @@ internal static class Pruebas
             var c3 = Configuracion.Cargar(ruta2);
             Igual("config: el archivo predeterminado se lee sin problemas", 0, c3.Problemas.Count);
             Igual("config: predeterminado naranja", 140, (int)c3.ColorResaltado.G);
+            Igual("config: voz predeterminada multilingüe", "fr-FR-RemyMultilingualNeural", c3.VozEdge);
             File.Delete(ruta2);
         }
         {

@@ -15,8 +15,8 @@ namespace LectorKaraoke
 
         public string Motor = "edge";               // edge | piper | sapi
         public bool UsarInternet = true;
-        public string VozEdge = "es-MX-JorgeNeural";
-        public string VozIngles = "en-US-AndrewMultilingualNeural";   // vacío = leer el inglés con la voz principal
+        public string VozEdge = "fr-FR-RemyMultilingualNeural";
+        public string VozIngles = "";               // vacío = la voz principal lee también el inglés
         public string VozPiper = "es_MX-ald-medium";
         public string VozSapi = "";                 // vacío = la primera voz en español
         public int Velocidad = 0;                   // -50..100 (%)
@@ -33,6 +33,7 @@ namespace LectorKaraoke
 
         public string LeerUrls = "dominio";         // dominio | completa | no
         public string Simbolos = "algunos";         // no | algunos | todos
+        public string Numeros = "auto";             // auto | literal
         public int MaxCaracteres = 30000;
         public int EsperaMotorMin = 5;
         public bool RegistrarTexto = false;
@@ -148,6 +149,11 @@ namespace LectorKaraoke
                     string sm = valor.ToLowerInvariant();
                     if (sm == "no" || sm == "algunos" || sm == "todos") Simbolos = sm;
                     else Problemas.Add("Línea " + linea + ": simbolos debe ser no, algunos o todos.");
+                    break;
+                case "numeros":
+                    string nu = valor.ToLowerInvariant();
+                    if (nu == "auto" || nu == "literal") Numeros = nu;
+                    else Problemas.Add("Línea " + linea + ": numeros debe ser auto o literal.");
                     break;
                 case "max_caracteres": MaxCaracteres = Entero(valor, 100, 500000, linea, MaxCaracteres); break;
                 case "espera_motor_min": EsperaMotorMin = Entero(valor, 0, 240, linea, EsperaMotorMin); break;
@@ -268,11 +274,11 @@ motor = edge
 ; no = nunca enviar texto a internet (usa piper o sapi)
 usar_internet = si
 
-; Voces. Algunas de Edge: es-MX-JorgeNeural, es-MX-DaliaNeural,
-; es-ES-AlvaroNeural, es-ES-ElviraNeural, es-ES-XimenaNeural
-voz_edge = es-MX-JorgeNeural
+; Voces. La predeterminada es multilingüe (nativa en español y en inglés). Otras: en-US-AvaMultilingualNeural,
+; de-DE-FlorianMultilingualNeural, es-MX-JorgeNeural, es-ES-AlvaroNeural, es-CO-GonzaloNeural (ver motor\muestras.py)
+voz_edge = fr-FR-RemyMultilingualNeural
 ; Voz para los trozos que están en inglés (vacío = usar la principal). Las voces Multilingual pronuncian bien ambos idiomas.
-voz_ingles = en-US-AndrewMultilingualNeural
+voz_ingles =
 voz_piper = es_MX-ald-medium
 ; vacío = la primera voz de Windows en español
 voz_sapi =
@@ -305,6 +311,9 @@ franja_tamano = 26
 ;   algunos = comillas, paréntesis, llaves, corchetes y / \ | # $ % & = @ * ¨ ~ ^ + < > (abre comillas ... cierra comillas)
 ;   todos   = además punto, coma, interrogación, guiones, etc.
 simbolos = algunos
+; Cifras: auto = 25.000, 25,000 y 25000 se leen veinticinco mil (3 cifras tras un separador = miles);
+; literal = se pasan tal cual a la voz, como hacen los lectores de pantalla clásicos
+numeros = auto
 ; Cómo leer las direcciones web: dominio, completa o no
 leer_urls = dominio
 max_caracteres = 30000

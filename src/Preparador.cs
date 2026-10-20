@@ -70,10 +70,12 @@ namespace LectorKaraoke
 
         // Separador decimal que entiende la voz elegida (es-ES dice "coma", es-MX "punto").
         [ThreadStatic] private static char separadorDecimal;
+        [ThreadStatic] private static bool numerosLiterales;    // numeros = literal: no se reinterpretan los separadores
 
         public static Preparado Preparar(string original, Configuracion cfg)
         {
             separadorDecimal = SeparadorDecimalDe(cfg.VozEdge);
+            numerosLiterales = cfg.Numeros == "literal";
             var res = new Preparado();
             if (string.IsNullOrEmpty(original)) return res;
             if (original.Length > cfg.MaxCaracteres)
@@ -484,7 +486,7 @@ namespace LectorKaraoke
         // 25.000, 25,000 y 25000 -> 25000. 3,5 / 3.5 -> decimal. 1.2.3 y 192.168.0.1 (versiones, IP) se dejan.
         internal static string NormalizarNumero(string s)
         {
-            if (s.Length == 0) return s;
+            if (s.Length == 0 || numerosLiterales) return s;
             char dec = separadorDecimal == '\0' ? '.' : separadorDecimal;
             string moneda = "";
             string porciento = "";
