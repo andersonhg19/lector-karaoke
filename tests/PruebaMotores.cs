@@ -17,6 +17,7 @@ internal static class PruebaMotores
         string baseDir = args.Length > 0 ? args[0] : Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".."));
         Directory.CreateDirectory(Path.Combine(baseDir, "tmp"));
         Registro.Iniciar(baseDir, "prueba-motores.log");
+        var pythonAntes = Process.GetProcessesByName("python").Select(x => x.Id).ToList();   // el lector abierto tiene el suyo
         var motores = new Motores(baseDir);
         string texto = "Hola, esta es la prueba de los motores. Cada palabra debe tener su tiempo.";
 
@@ -91,7 +92,7 @@ internal static class PruebaMotores
 
         motores.Liberar();
         Thread.Sleep(500);
-        Cierto("motor edge cerrado al liberar", !Process.GetProcessesByName("python").Any(p => { try { return p.MainModule.FileName.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase); } catch { return false; } }));
+        Cierto("motor edge cerrado al liberar", !Process.GetProcessesByName("python").Any(p => { try { return !pythonAntes.Contains(p.Id) && p.MainModule.FileName.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase); } catch { return false; } }));
         Console.WriteLine();
         Console.WriteLine("MOTORES: " + ok + " ok, " + fallos + " fallos");
         return fallos;

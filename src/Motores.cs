@@ -400,6 +400,15 @@ namespace LectorKaraoke
                 ct.ThrowIfCancellationRequested();
                 double total, ini, fin;
                 Wav.Analizar(wav, out total, out ini, out fin);
+                // SAPI informa posiciones algo desfasadas respecto al audio real en frases largas:
+                // si la última palabra "empieza" después de que termina la voz, se reescala todo a la voz real.
+                double maxInicio = 0;
+                foreach (var p in t.Palabras) maxInicio = Math.Max(maxInicio, p.InicioMs);
+                if (maxInicio > 0 && fin > 0 && maxInicio > fin * 0.97)
+                {
+                    double escala = (fin * 0.92) / maxInicio;
+                    foreach (var p in t.Palabras) if (p.InicioMs >= 0) p.InicioMs *= escala;
+                }
                 Tiempos.Interpolar(t, total);
                 return new Audio { Archivo = wav, Motor = "sapi", Trozo = t, DuracionMs = total };
             }, ct);
