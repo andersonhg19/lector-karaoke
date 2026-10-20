@@ -1,0 +1,15 @@
+# Se descargan con Configurar.exe
+motor/python/
+piper/
+_descargas/
+
+# Locales de cada equipo
+config.ini
+logs/
+tmp/
+tmp_prueba/
+
+# Compilados (se publican en Releases)
+*.exe
+*.pdb
+tests/resultado-*.txt

@@ -1,0 +1,122 @@
+# Lector Karaoke
+
+Lector de pantalla **a pedido** para Windows 11: seleccionas un texto, presionas **una tecla** (F9 por defecto) y se lee en voz alta mientras cada palabra se resalta **sobre la misma aplicación**, al estilo karaoke. Sin selección, lee el botón o el texto de ayuda (tooltip) que está bajo el puntero del mouse. La misma tecla detiene la lectura.
+
+Pensado para personas que usan la Lupa de Windows con mucho aumento y no alcanzan a leer los textos de ayuda, o que quieren escuchar un bloque de texto (por ejemplo, la salida de una terminal) sin abrir otra aplicación ni copiar y pegar.
+
+*English summary: on-demand screen reader for Windows 11. Select text, press one key (F9), and it is read aloud while each word is highlighted in place over the application (karaoke style). With nothing selected it reads the control or tooltip under the mouse. Neural voices (Microsoft Edge voices via `edge-tts`, offline fallback with Piper). Portable, no admin rights, no installer.*
+
+## Qué hace
+
+| Al presionar la tecla | Resultado |
+|---|---|
+| Hay texto seleccionado | Lo lee y resalta en naranja la palabra que se está diciendo; las ya leídas quedan con un naranja más suave. |
+| No hay selección | Lee el elemento bajo el mouse: su tooltip si está visible, si no su nombre y descripción; lo enmarca en naranja. |
+| Ya está leyendo | Se detiene. Es la misma tecla: no usa Esc, que en muchas herramientas (por ejemplo Claude Code) detiene el proceso. |
+
+- **Nunca habla por su cuenta.** Solo cuando presionas la tecla.
+- **No abre ventanas:** un icono en la bandeja y una capa transparente que no recibe clics ni toma el foco.
+- **Voces neuronales:** por defecto *Jorge* (`es-MX-JorgeNeural`) de Microsoft Edge. Sin internet usa **Piper** (local, voz `es_MX-ald`). Si Piper falta, usa las voces de Windows.
+- **Protege secretos:** contraseñas, tokens, claves de API, JWT, URIs con usuario y clave, y bloques de clave privada se dicen como "valor oculto" y **nunca** salen a internet.
+- **Lee bien textos técnicos:** separa `getUserById` → "get User By Id", nombra los símbolos ("abre comillas… cierra comillas", "barra", "numeral", "arroba"), lee las direcciones web como "enlace dominio" y omite códigos de color ANSI, cajas, spinners y decoraciones de markdown.
+- **Portable:** todo vive en una carpeta. Para llevarlo a otro PC se copia la carpeta y se ejecuta `Configurar.exe`.
+- **Liviano:** en reposo no consume CPU y ocupa unos 35 MB de memoria. El motor de voz se cierra solo tras unos minutos sin uso.
+
+## Instalación
+
+1. Descarga la última versión desde *Releases* (o compílala, ver más abajo) y descomprímela donde quieras, por ejemplo `C:\LectorKaraoke`.
+2. Ejecuta **`Configurar.exe`**. Descarga lo que falte, verificando cada archivo con su huella SHA-256:
+   - Python embebido 3.12 y la librería `edge-tts` (para las voces de Edge);
+   - Piper y la voz `es_MX-ald-medium` (para leer sin internet).
+
+   Después registra el arranque automático con Windows y abre el lector.
+3. Listo: aparece una "L" naranja en la bandeja. Selecciona un texto y presiona **F9**.
+
+No necesita permisos de administrador ni instala nada fuera de su carpeta (salvo la entrada de inicio en `HKCU\...\Run`).
+
+### Otras opciones de `Configurar.exe`
+| Opción | Qué hace |
+|---|---|
+| *(sin opciones)* | Instala o repara lo que falte, registra el arranque y reinicia el lector |
+| `/reiniciar` | Solo reinicia el lector |
+| `/desinstalar` | Quita el arranque automático y cierra el lector (no borra la carpeta) |
+| `/actualizar-voz` | Actualiza `edge-tts` (si Microsoft cambia el acceso a sus voces) |
+| `/sin-descargas`, `/silencioso` | Para usos automatizados |
+
+El menú del icono de la bandeja también permite leer o detener, abrir la configuración, reiniciar y salir.
+
+## Configuración (`config.ini`)
+
+El archivo se crea con valores comentados. **Al guardarlo, el lector lo recarga solo**; si un valor no es válido, usa el predeterminado y avisa en la bandeja.
+
+| Opción | Predeterminado | Descripción |
+|---|---|---|
+| `tecla` | `F9` | `F1`..`F24`, `Pausa` o `BloqDespl`. Si la nueva está ocupada, se mantiene la anterior y se avisa |
+| `motor` | `edge` | `edge`, `piper` o `sapi` |
+| `usar_internet` | `si` | `no` = nunca enviar texto a internet |
+| `voz_edge` | `es-MX-JorgeNeural` | También `es-MX-DaliaNeural`, `es-ES-AlvaroNeural`, `es-ES-ElviraNeural`, `es-ES-XimenaNeural`… |
+| `velocidad` | `0` | En %, de `-50` a `100` |
+| `volumen` | `100` | De 0 a 100 |
+| `color` | `naranja` | `#RRGGBB` o un nombre: naranja, azul, verde, rojo, morado, amarillo, cian, rosado |
+| `opacidad_actual` / `opacidad_leido` | `45` / `18` | Opacidad de la palabra actual y de las ya leídas |
+| `grosor_subrayado` | `4` | Píxeles a 100 % de escala; crece con el tamaño del texto |
+| `marcar_leido` | `si` | Dejar marcadas las palabras ya leídas |
+| `franja` / `franja_tamano` | `si` / `26` | Subtítulo junto al puntero cuando la aplicación no informa la posición de las palabras |
+| `simbolos` | `algunos` | `algunos` nombra comillas, paréntesis, llaves, corchetes y `/ \ \| # $ % & = @ * ¨ ~ ^ + < >` ("abre comillas… cierra comillas"); `todos` además punto, coma, interrogación, guiones; `no` no los nombra. Las decoraciones de markdown (`**`, `##`, `-----`) nunca se leen |
+| `leer_urls` | `dominio` | `dominio`, `completa` o `no` |
+| `espera_motor_min` | `5` | Minutos que el motor de voz se queda listo tras leer |
+| `registrar_texto` | `no` | `si` guarda el texto leído en el log (solo para diagnóstico) |
+| `[copiar]` | ver archivo | Atajo de copia por programa y lista de programas a los que nunca se les envía uno |
+
+## Cómo funciona
+
+```
+Tecla global (RegisterHotKey)
+  └─ Captura del texto
+       1. UI Automation (TextPattern): selección + rectángulo exacto de cada palabra en pantalla
+       2. Copia controlada por programa (si la app no expone su texto) → el portapapeles se restaura tal cual
+       3. Sin selección: elemento o tooltip bajo el mouse
+  └─ Preparación: limpieza, secretos, identificadores, trozos (el primero corto para empezar rápido)
+  └─ Voz: Edge (marcas exactas por palabra) → Piper (tiempos estimados por sílabas) → SAPI (marcas exactas)
+       el trozo siguiente se sintetiza mientras suena el actual
+  └─ Reproducción (MCI de Windows) con posición en milisegundos
+  └─ Resaltado: ventana por capas, transparente a clics, consciente del DPI de cada monitor
+```
+
+- **Escrito en C# para .NET Framework 4.8**, que ya viene con Windows 10/11, y compilado con el compilador incluido en Windows. Sin dependencias.
+- **El motor de Edge** es un pequeño proceso Python (`motor/lector_edge.py`) que habla por stdin/stdout en JSON. Usa la librería [`edge-tts`](https://github.com/rany2/edge-tts) para pedir el audio y las marcas `WordBoundary` (el momento exacto de cada palabra).
+- **Con un solo atajo** se cubren las aplicaciones sin UI Automation de texto. Por ejemplo, en la terminal de Orca el lector usa `Ctrl+Shift+C`, que en Windows Orca nunca reenvía al proceso. **Nunca envía `Ctrl+C` a una terminal**, porque sin selección interrumpe el programa que corre en ella.
+
+## Privacidad
+- **Con `motor = edge`**, el texto que lees se envía a un servicio de Microsoft (el mismo que usa la función "Leer en voz alta" de Edge) para convertirlo en audio. Antes de enviarlo se ocultan los valores que parecen secretos.
+- **Para que nada salga del equipo**, usa `usar_internet = no`: lee con Piper, localmente.
+- **El log no guarda el texto leído**, salvo que actives `registrar_texto`.
+- **Si una aplicación solo permite leer copiando**, la copia la hace esa aplicación. Si tienes activado el historial del portapapeles de Windows (Win+V), ese texto puede quedar en el historial. El lector restaura tu portapapeles y marca la restauración para que no entre al historial.
+
+## Límites conocidos
+- `edge-tts` usa un servicio de Microsoft no documentado. Si Microsoft lo cambia, el lector pasa a la voz local, intenta actualizar `edge-tts` una vez al día y avisa. También se puede forzar con `Configurar.exe /actualizar-voz`.
+- **Sin posición de cada palabra** (terminal de Orca, VS Code y otras apps Electron), el resaltado se muestra en la franja junto al puntero, no sobre el texto.
+- No sigue la Lupa de Windows automáticamente: si la palabra resaltada queda fuera de la zona ampliada, hay que mover la vista.
+- **Con ventanas de administrador no funciona** si el lector no corre también como administrador: Windows bloquea leer otra ventana elevada y enviarle teclas.
+
+## Compilar
+```
+build.cmd
+```
+Genera `LectorKaraoke.exe`, `Configurar.exe` y las pruebas. Usa el `csc.exe` de .NET Framework 4.8 que trae Windows.
+
+## Pruebas
+- `tests\Pruebas.exe`: pruebas unitarias de preparación del texto, secretos, trozos, alineación de tiempos y configuración.
+- `tests\PruebaMotores.exe`: síntesis real con los tres motores, cambio de motor ante fallos, cancelación, velocidad y reproducción.
+- `tests\integracion.ps1`: pruebas reales con el lector en modo `--prueba`. Cubre el Bloc de notas, Windows Terminal, la terminal de Orca, el modo mouse, el texto largo, las pulsaciones rápidas, cerrar la ventana a mitad de lectura y el resaltado en varios monitores con distinta escala. Verifica los píxeles naranjas en pantalla y espera a que no se esté usando el equipo.
+
+La matriz completa de casos está en [`docs/PLAN.md`](docs/PLAN.md) y los resultados en [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
+
+## Licencias y créditos
+- **Lector Karaoke:** licencia MIT (ver `LICENSE`).
+- **Componentes que descarga `Configurar.exe`**, con sus propias licencias:
+  - [edge-tts](https://github.com/rany2/edge-tts): LGPL-3.0;
+  - [Piper](https://github.com/rhasspy/piper): MIT;
+  - la voz [es_MX-ald-medium](https://huggingface.co/rhasspy/piper-voices): Unlicense;
+  - [Python](https://www.python.org/): PSF.
+- No está afiliado con Microsoft. Las voces neuronales de Edge son de Microsoft.
