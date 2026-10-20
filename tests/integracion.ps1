@@ -68,7 +68,7 @@ function PixelesNaranja($x, $y, $w, $h) {
   return $n
 }
 
-function VentanaDe($proceso, $titulo, $seg = 10) {
+function VentanaDe($proceso, $titulo, $seg = 20) {
   $limite = (Get-Date).AddSeconds($seg)
   while ((Get-Date) -lt $limite) {
     $p = Get-Process $proceso -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like "*$titulo*" } | Select-Object -First 1
@@ -211,12 +211,20 @@ except KeyboardInterrupt:
   Cierto "texto de la terminal capturado" ($cap -and $cap.Linea -match "LINEA DE PRUEBA PARA ORCA")
   Start-Sleep -Milliseconds 300
   Cierto "portapapeles restaurado" ((Get-Clipboard -Raw).Trim() -eq "contenido-original-123")
-  $aud = Esperar "^\S+\taudio\t" $m 15
-  Start-Sleep -Milliseconds 600
-  $pos = [System.Windows.Forms.Cursor]::Position
-  $scr = [System.Windows.Forms.Screen]::FromPoint($pos).Bounds
-  $n = PixelesNaranja ([Math]::Max($scr.Left, $pos.X - 900)) ([Math]::Max($scr.Top, $pos.Y - 400)) 1800 800
-  Cierto "franja con la palabra en naranja visible ($n px)" ($n -gt 20)
+  $ter = Esperar "^\S+\tterminal\t" $m 10
+  Cierto "ubicación por OCR en la terminal ($(if ($ter) { ($ter.Linea -split "`t")[2] }))" ($ter -and $ter.Linea -match "anclas=([3-9]|\d\d+)/")
+  $rt = Esperar "^\S+\trects\tpalabra=[1-9]\d*\|-?\d" $m 15
+  Cierto "rectángulos de palabra en la terminal de Orca" ($rt -ne $null)
+  if ($rt) {
+    $v = RectDe $rt.Linea
+    Start-Sleep -Milliseconds 60
+    # A velocidad alta una palabra corta dura ~80 ms: se revisa toda la fila de la palabra.
+    $n = PixelesNaranja ($v[0] - 500) $v[1] 1100 ($v[3] + 12)
+    Cierto "resaltado naranja sobre la fila de la palabra en Orca ($n px)" ($n -gt 5)
+    $bmp = New-Object System.Drawing.Bitmap 1000, 240
+    $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($v[0] - 450, $v[1] - 100, 0, 0, $bmp.Size)
+    $bmp.Save((Join-Path $Base "tmp_prueba\orca-integracion.png")); $g.Dispose(); $bmp.Dispose()
+  }
   $fin = Esperar "^\S+\tfin\t" $m 30
   if (-not $fin) { [W]::Tecla(0x78) }
   $teclas = Get-Content $reg
@@ -230,7 +238,17 @@ function AbrirNotas($nombre, $texto) {
   $f = Join-Path $dir "$nombre.txt"
   Set-Content -Path $f -Encoding UTF8 -Value $texto
   $p = Start-Process notepad.exe -ArgumentList "`"$f`"" -PassThru
-  $h = VentanaDe "notepad" $nombre 15
+  $h = VentanaDe "notepad" $nombre 8
+  if ($h -eq [IntPtr]::Zero) {
+    # El Bloc de notas restauró su sesión y dejó activa otra pestaña: se selecciona la del archivo de prueba.
+    $w = (Get-Process notepad -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1)
+    if ($w) {
+      $raizN = [System.Windows.Automation.AutomationElement]::FromHandle($w.MainWindowHandle)
+      $cTab = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::TabItem)
+      $tab = $raizN.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cTab) | Where-Object { $_.Current.Name -like "*$nombre*" } | Select-Object -First 1
+      if ($tab) { $tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select(); Start-Sleep -Milliseconds 500; $h = VentanaDe "notepad" $nombre 5 }
+    }
+  }
   if ($h -ne [IntPtr]::Zero) { Start-Sleep -Milliseconds 800; [W]::Enfocar($h); Start-Sleep -Milliseconds 400 }
   return $h
 }
@@ -350,14 +368,17 @@ function Caso-Adversarial {
     Cierto "ventana cerrada: no queda naranja en pantalla" (SinPixelesEn $v)
     Cierto "el lector sigue vivo tras cerrar la ventana" ((Get-Process LectorKaraoke -ErrorAction SilentlyContinue) -ne $null)
   } else { Cierto "rects antes de cerrar" $false }
-  [W]::Tecla(0x78); Start-Sleep -Milliseconds 400
+  # Detener solo si sigue leyendo (una F9 de más iniciaría otra lectura y desordenaría el caso siguiente).
+  if (@(Eventos)[-1] -notmatch "	(fin|detenido)	") { [W]::Tecla(0x78) }
+  [void](Esperar "^\S+	(fin|detenido)	" (Marca) 5)
+  Start-Sleep -Milliseconds 500
 
   # 4) Monitor con otra escala: mover el Bloc de notas a cada monitor y comprobar el resaltado.
   $pantallas = [System.Windows.Forms.Screen]::AllScreens
   foreach ($s in $pantallas) {
     if (-not (EsperarInactividad 8 5)) { Write-Host "  (equipo ocupado; monitor omitido)"; continue }
     $nd = "prueba-dpi-" + (Get-Random); $h2 = AbrirNotas $nd "Prueba de escala en el monitor $($s.DeviceName) con resaltado exacto."
-    if ($h2 -eq [IntPtr]::Zero) { continue }
+    if ($h2 -eq [IntPtr]::Zero) { Cierto "monitor $($s.DeviceName): se abrió el Bloc de notas" $false; continue }
     $b = $s.WorkingArea
     Add-Type -Namespace X -Name Pos -MemberDefinition '[DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hh, bool r);' -ErrorAction SilentlyContinue
     [void][X.Pos]::MoveWindow($h2, $b.Left + 60, $b.Top + 60, [Math]::Min(1000, $b.Width - 120), 500, $true)

@@ -14,3 +14,4 @@ tmp_prueba/
 *.pdb
 tests/resultado-*.txt
 muestras/
+tests/datos/

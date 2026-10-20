@@ -40,6 +40,7 @@ namespace LectorKaraoke
             LimpiarTmp();
             motores = new Motores(baseDir);
             motores.Aviso += m => { var h = Aviso; if (h != null) h(m); };
+            motores.Precalentar(cfg);
             capa.CreateControl();
             franja.CreateControl();
         }
@@ -91,6 +92,8 @@ namespace LectorKaraoke
             if (prep.Trozos.Count == 0) { Terminar(g); Pitido(); return; }
 
             estado = Estado.Hablando;
+            terminal = null;
+            if (cap.Fuente == Fuente.Copia && !cap.Rejilla.IsEmpty) terminal = UbicarTerminal(cap);
             try { await Hablar(g, cap, prep, ct); }
             catch (OperationCanceledException) { }
             catch (Exception e)
@@ -114,12 +117,18 @@ namespace LectorKaraoke
             if (cap.Fuente == Fuente.Copia && cfg.Franja) franja.Iniciar(cap.Puntero);
 
             var cfgLocal = cfg;
-            Task<Audio> siguiente = motores.Sintetizar(trozos[0], cfgLocal, ct);
+            // Con Edge se piden varios trozos a la vez (el servidor tarda más que lo que dura un trozo corto);
+            // con los motores locales, uno por delante para no saturar la CPU.
+            int adelante = cfgLocal.Motor == "edge" && cfgLocal.UsarInternet ? 3 : 1;
+            var tareas = new Task<Audio>[trozos.Count];
+            for (int k = 0; k < trozos.Count && k <= adelante - 1; k++) tareas[k] = motores.Sintetizar(trozos[k], cfgLocal, ct);
             for (int i = 0; i < trozos.Count; i++)
             {
-                Audio a = await siguiente;
+                if (tareas[i] == null) tareas[i] = motores.Sintetizar(trozos[i], cfgLocal, ct);
+                Audio a = await tareas[i];
                 if (g != generacion) { MotorEdge.Borrar(a.Archivo); return; }
-                siguiente = i + 1 < trozos.Count ? motores.Sintetizar(trozos[i + 1], cfgLocal, ct) : null;
+                int siguienteK = i + adelante;
+                if (siguienteK < trozos.Count && tareas[siguienteK] == null) tareas[siguienteK] = motores.Sintetizar(trozos[siguienteK], cfgLocal, ct);
                 Prueba("audio", "trozo=" + i + "|motor=" + a.Motor + "|tiempos=" + string.Join(",", a.Trozo.Palabras.Select(p => (int)p.InicioMs)));
                 if (!rep.Abrir(a.Archivo, cfg.Volumen) || !rep.Reproducir())
                 {
@@ -131,6 +140,37 @@ namespace LectorKaraoke
                 MotorEdge.Borrar(a.Archivo);
                 if (g != generacion) return;
             }
+        }
+
+        private Task<UbicadorTerminal> terminal;
+
+        // Captura la rejilla de la terminal enseguida (antes de que cambie) y ubica las palabras con el OCR de Windows,
+        // en paralelo con la síntesis de la voz. Si no es confiable, se sigue con la franja.
+        private Task<UbicadorTerminal> UbicarTerminal(Captura cap)
+        {
+            var rejilla = cap.Rejilla;
+            var texto = cap.Texto;
+            var tarea = Task.Run(() =>
+            {
+                var sw = Stopwatch.StartNew();
+                using (var bmp = OcrWindows.Capturar(rejilla, false))
+                {
+                    var ocr = OcrWindows.Reconocer(bmp).GetAwaiter().GetResult();
+                    var u = UbicadorTerminal.Construir(texto, rejilla, bmp, ocr);
+                    Registro.Info("Ubicación en terminal: " + u.Diagnostico + " en " + sw.ElapsedMilliseconds + " ms.");
+                    Prueba("terminal", u.Diagnostico + "|ms=" + sw.ElapsedMilliseconds);
+                    return u.Anclas >= 3 ? u : null;
+                }
+            });
+            tarea.ContinueWith(t => Registro.Error("Ubicación en terminal", t.Exception != null ? t.Exception.GetBaseException() : null),
+                TaskContinuationOptions.OnlyOnFaulted);
+            return tarea;
+        }
+
+        private UbicadorTerminal TerminalLista()
+        {
+            var t = terminal;
+            return t != null && t.Status == TaskStatus.RanToCompletion ? t.Result : null;
         }
 
         // Mientras suena el trozo, mueve el resaltado a la palabra que se está diciendo.
@@ -172,6 +212,17 @@ namespace LectorKaraoke
                         }
                         else capa.Ocultar();
                     }
+                    else if (cap.Fuente == Fuente.Copia && TerminalLista() != null)
+                    {
+                        // Resaltado sobre el texto de la terminal: cálculo puro, sin consultas lentas.
+                        franja.Ocultar();
+                        var p = t.Palabras[idx];
+                        leidos.AddRange(actuales);
+                        actuales = TerminalLista().Rects(p.OrigInicio, p.OrigLargo);
+                        Prueba("rects", "palabra=" + idx + "|" + string.Join(";", actuales.Select(x => x.X + "," + x.Y + "," + x.Width + "," + x.Height)));
+                        if (VentanaUtil(cap.Ventana) && (actuales.Count > 0 || leidos.Count > 0)) capa.Dibujar(actuales, leidos, Rectangle.Empty, cfg);
+                        else capa.Ocultar();
+                    }
                     else if (cap.Fuente == Fuente.Copia && cfg.Franja)
                     {
                         franja.Mostrar(t, idx, cfg);
@@ -179,7 +230,7 @@ namespace LectorKaraoke
                 }
                 if (!rep.Sonando() && (DateTime.Now - inicio).TotalMilliseconds > 200) break;
             }
-            if (cap.Fuente == Fuente.Accesibilidad) capa.Ocultar();
+            if (cap.Fuente == Fuente.Accesibilidad || cap.Fuente == Fuente.Copia) capa.Ocultar();
         }
 
         // Ejecuta en el hilo UIA con tiempo límite. Si una aplicación colgada bloquea la consulta, ese hilo se descarta

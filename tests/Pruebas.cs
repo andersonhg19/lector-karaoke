@@ -92,7 +92,8 @@ internal static class Pruebas
             string largo = string.Join(" ", Enumerable.Repeat("Esta es una oración de prueba bastante normal.", 40));
             var p = Preparador.Preparar(largo, cfg);
             Cierto("trozos: varios", p.Trozos.Count > 5);
-            Cierto("trozos: primero corto (" + p.Trozos[0].Texto.Length + ")", p.Trozos[0].Texto.Length <= 90);
+            Cierto("trozos: primero de ~3 palabras (" + p.Trozos[0].Palabras.Count + ")", p.Trozos[0].Palabras.Count <= 5 && p.Trozos[0].Texto.Length <= 40);
+            Cierto("trozos: crecen (" + p.Trozos[1].Texto.Length + " / " + p.Trozos[2].Texto.Length + ")", p.Trozos[1].Texto.Length <= 80 && p.Trozos[2].Texto.Length <= 170);
             Cierto("trozos: ninguno > 320", p.Trozos.All(t => t.Texto.Length <= 320));
             int total = p.Trozos.Sum(t => t.Palabras.Count);
             Igual("trozos: no se pierden palabras", 40 * 8, total);
@@ -112,7 +113,7 @@ internal static class Pruebas
         // ---------- Alineación de marcas ----------
         {
             var p = Preparador.Preparar("Hola Anderson, getUserById devuelve 2026 resultados.", cfg);
-            var t = p.Trozos[0];
+            var t = Unir(p);
             var marcas = new List<Marca>
             {
                 new Marca("Hola", 100, 300), new Marca("Anderson", 420, 450), new Marca("get", 1000, 150), new Marca("User", 1160, 200),
@@ -129,7 +130,7 @@ internal static class Pruebas
         }
         {
             var p = Preparador.Preparar("uno dos tres cuatro cinco", cfg);
-            var t = p.Trozos[0];
+            var t = Unir(p);
             Tiempos.Alinear(t, new List<Marca> { new Marca("uno", 0, 200), new Marca("cinco", 2000, 300) }, 2400);
             Cierto("interpolar huecos", t.Palabras.All(w => w.InicioMs >= 0) && Monotono(t) && t.Palabras[2].InicioMs > 200 && t.Palabras[2].InicioMs < 2000);
             Tiempos.Alinear(t, new List<Marca>(), 2000);
@@ -139,7 +140,7 @@ internal static class Pruebas
         }
         {
             var p = Preparador.Preparar("Primera parte, segunda parte. Fin", cfg);
-            var t = p.Trozos[0];
+            var t = Unir(p);
             Tiempos.Estimar(t, 100, 2100);
             Cierto("estimar: dentro del rango", t.Palabras.First().InicioMs >= 100 && t.Palabras.Last().FinMs <= 2101 && Monotono(t));
         }
@@ -279,6 +280,15 @@ internal static class Pruebas
         c = Configuracion.Cargar(r);
         Cierto("config: simbolos inválido avisa", c.Simbolos == "algunos" && c.Problemas.Count == 1);
         return r;
+    }
+
+    // Une los trozos en uno (las pruebas de tiempos necesitan la frase completa).
+    private static Trozo Unir(Preparado p)
+    {
+        var t = new Trozo();
+        foreach (var x in p.Trozos) t.Palabras.AddRange(x.Palabras);
+        t.Texto = string.Join(" ", t.Palabras.Select(w => w.Habla));
+        return t;
     }
 
     private static string Habla(string s, Configuracion cfg)

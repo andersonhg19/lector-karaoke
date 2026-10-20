@@ -35,3 +35,14 @@ Ninguna fuente pública compara las voces multilingües de Microsoft hablando es
 - **En textos técnicos y de terminal**, `25,000` casi siempre significa veinticinco mil (convención inglesa).
 - **La regla `auto`** trata un solo separador seguido de exactamente 3 cifras (sin cero inicial) como miles. Acierta en ambas convenciones; solo falla con decimales de exactamente 3 cifras.
 - **`numeros = literal`** vuelve al comportamiento clásico.
+
+## Velocidad (latencia del servidor de Microsoft)
+Las voces multilingües son entre 2 y 4 veces más lentas en el servidor que las nativas. Medido con el lector real, de F9 a la voz:
+
+| Voz | F9 → voz (mediana) |
+|---|---|
+| es-MX-JorgeNeural | ~0,9 s |
+| es-ES-AlvaroNeural | ~1,3 s |
+| fr-FR-RemyMultilingualNeural | ~2,1 s |
+
+Para que la espera sea corta, el primer trozo tiene unas 3 palabras, se piden varios trozos en paralelo y el motor queda listo 30 minutos. Configuración recomendada si importa la velocidad: una voz nativa en `voz_edge` y la multilingüe solo para el inglés (`voz_ingles = fr-FR-RemyMultilingualNeural`).

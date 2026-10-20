@@ -29,13 +29,15 @@ namespace LectorKaraoke
         public bool MarcarLeido = true;
         public bool SeguirLectura = true;           // desplazar la aplicación hasta la palabra si está fuera de la vista
         public bool Franja = true;
+        public bool OcrTerminal = true;             // ubicar palabras con el OCR de Windows en terminales sin accesibilidad
+        public HashSet<string> OcrProgramas = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "orca" };
         public int FranjaTamano = 26;               // puntos
 
         public string LeerUrls = "dominio";         // dominio | completa | no
         public string Simbolos = "algunos";         // no | algunos | todos
         public string Numeros = "auto";             // auto | literal
         public int MaxCaracteres = 30000;
-        public int EsperaMotorMin = 5;
+        public int EsperaMotorMin = 30;
         public bool RegistrarTexto = false;
 
         public Dictionary<string, string> AtajosCopia = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -139,6 +141,11 @@ namespace LectorKaraoke
                 case "marcar_leido": MarcarLeido = Booleano(valor, linea, MarcarLeido); break;
                 case "seguir_lectura": SeguirLectura = Booleano(valor, linea, SeguirLectura); break;
                 case "franja": Franja = Booleano(valor, linea, Franja); break;
+                case "ocr_terminal": OcrTerminal = Booleano(valor, linea, OcrTerminal); break;
+                case "ocr_programas":
+                    OcrProgramas.Clear();
+                    foreach (var pr in valor.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries)) OcrProgramas.Add(pr.Trim().ToLowerInvariant().Replace(".exe", ""));
+                    break;
                 case "franja_tamano": FranjaTamano = Entero(valor, 10, 96, linea, FranjaTamano); break;
                 case "leer_urls":
                     string u = valor.ToLowerInvariant();
@@ -304,6 +311,10 @@ seguir_lectura = si
 ; mostrar el texto en una franja junto al puntero
 franja = si
 franja_tamano = 26
+; Terminales que no dicen dónde está cada palabra (Orca): ubicarlas con el OCR de Windows (local, sin internet)
+; y resaltarlas sobre el texto. Si no se puede, se usa la franja.
+ocr_terminal = si
+ocr_programas = orca
 
 [avanzado]
 ; Leer los símbolos por su nombre:
@@ -318,7 +329,7 @@ numeros = auto
 leer_urls = dominio
 max_caracteres = 30000
 ; Minutos que el motor de voz se queda listo después de leer (0 = cerrarlo enseguida)
-espera_motor_min = 5
+espera_motor_min = 30
 ; si = guardar en el log el texto leído (solo para diagnóstico)
 registrar_texto = no
 

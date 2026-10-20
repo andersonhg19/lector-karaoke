@@ -4,7 +4,8 @@ Equipo: Windows 11, 3 monitores (dos al 100 % y uno al 125 %), Orca 1.4.224, Win
 
 | Batería | Resultado |
 |---|---|
-| Unitarias (`tests\Pruebas.exe`) | **122 / 122** (incluye 36 de lectura de símbolos) |
+| Unitarias (`tests\Pruebas.exe`) | **150 / 150** (símbolos, cifras, idioma, trozos) |
+| Ubicador de terminal por OCR, sin pantalla (`tests\PruebaOcr.exe`) | **8 / 8**: 80 de 80 palabras ubicadas en 62 ms, error 1,5 px; un texto ausente se descarta |
 | Motores de voz y reproducción (`tests\PruebaMotores.exe`) | **24 / 24** |
 | Integración real en pantalla (`tests\integracion.ps1 -Caso todos`) | **44 / 44**, y 16 / 16 en el caso del Bloc de notas con símbolos y velocidad +20 % |
 | Configuración en caliente, conflicto de teclas, instancia única, reinicio | 6 / 6 (manual guiado) |
@@ -29,6 +30,11 @@ Equipo: Windows 11, 3 monitores (dos al 100 % y uno al 125 %), Orca 1.4.224, Win
   - dos pulsaciones en 60 ms detienen una sola vez;
   - al cerrar la ventana a mitad de lectura no queda naranja en pantalla y el lector sigue vivo;
   - el resaltado es exacto en los 3 monitores, incluido el de 125 %.
+
+## Terminal de Orca con OCR (versión 1.1)
+- Integración real: ubicación por OCR en 14–75 ms (10 de 11 anclas), resaltado naranja verificado sobre la fila de la palabra y por captura de pantalla.
+- Sin `^C` en ningún caso y portapapeles restaurado.
+- Defecto corregido: la confianza se exigía sobre todo el texto seleccionado, y con selecciones más largas que la pantalla se descartaba. Ahora se exige sobre lo visible.
 
 ## Defectos encontrados y corregidos durante las pruebas
 | Defecto | Corrección |

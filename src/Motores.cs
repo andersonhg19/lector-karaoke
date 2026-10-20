@@ -181,7 +181,7 @@ namespace LectorKaraoke
                 try { Enviar("{\"accion\":\"cancelar\",\"id\":" + id + "}"); } catch { }
                 Borrar(archivo);
                 if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
-                caidoHasta = DateTime.Now.AddSeconds(60);
+                caidoHasta = DateTime.Now.AddSeconds(20);
                 throw new FalloMotor("red", "el motor edge no respondió a tiempo");
             }
             var r = await tcs.Task.ConfigureAwait(false);

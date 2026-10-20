@@ -25,6 +25,7 @@ namespace LectorKaraoke
         public Rectangle Zona;              // modo mouse: rectángulo del elemento o tooltip
         public Point Puntero;
         public UbicadorUia Ubicador;        // solo con Fuente.Accesibilidad
+        public Rectangle Rejilla;           // copia en una terminal con ubicación por OCR (Orca): zona de la rejilla
         public string Motivo = "";
     }
 
@@ -168,7 +169,16 @@ namespace LectorKaraoke
             {
                 if (SeleccionUia(c, cfg)) return c;
                 if (c.Motivo == "contraseña") return c;
-                if (SeleccionCopia(c, cfg)) return c;
+                if (SeleccionCopia(c, cfg))
+                {
+                    // Terminales sin accesibilidad de texto: se guarda la rejilla para ubicar las palabras con OCR.
+                    if (cfg.OcrTerminal && cfg.OcrProgramas.Contains(c.Proceso))
+                    {
+                        c.Rejilla = UbicadorTerminal.RejillaDesdeFoco();
+                        if (c.Rejilla.IsEmpty) c.Rejilla = UbicadorTerminal.RejillaEnVentana(fg);
+                    }
+                    return c;
+                }
             }
             if (elevada) c.Motivo = "ventana de administrador";
             BajoMouse(c, pt);
@@ -405,10 +415,11 @@ namespace LectorKaraoke
             if (Nativo.GetForegroundWindow() != ventana) return null;   // el usuario cambió de ventana
             Enviar(atajo);
             string texto = null;
-            var limite = DateTime.Now.AddMilliseconds(700);
+            // Las apps copian en 20-150 ms; si en 300 ms no cambió el portapapeles es que no había selección.
+            var limite = DateTime.Now.AddMilliseconds(300);
             while (DateTime.Now < limite)
             {
-                Thread.Sleep(25);
+                Thread.Sleep(10);
                 if (Nativo.GetClipboardSequenceNumber() != seq0)
                 {
                     Thread.Sleep(30);   // dar tiempo a que termine de escribir todos los formatos

@@ -67,6 +67,7 @@ El archivo se crea con valores comentados. **Al guardarlo, el lector lo recarga 
 | `opacidad_actual` / `opacidad_leido` | `45` / `18` | Opacidad de la palabra actual y de las ya leídas |
 | `grosor_subrayado` | `4` | Píxeles a 100 % de escala; crece con el tamaño del texto |
 | `marcar_leido` | `si` | Dejar marcadas las palabras ya leídas |
+| `ocr_terminal` / `ocr_programas` | `si` / `orca` | Ubicar las palabras con el OCR de Windows en terminales que no informan posiciones y resaltarlas sobre el texto |
 | `franja` / `franja_tamano` | `si` / `26` | Subtítulo junto al puntero cuando la aplicación no informa la posición de las palabras |
 | `simbolos` | `algunos` | `algunos` nombra comillas, paréntesis, llaves, corchetes y `/ \ \| # $ % & = @ * ¨ ~ ^ + < >` ("abre comillas… cierra comillas"); `todos` además punto, coma, interrogación, guiones; `no` no los nombra. Las decoraciones de markdown (`**`, `##`, `-----`) nunca se leen |
 | `leer_urls` | `dominio` | `dominio`, `completa` o `no` |
@@ -101,7 +102,8 @@ Tecla global (RegisterHotKey)
 
 ## Límites conocidos
 - `edge-tts` usa un servicio de Microsoft no documentado. Si Microsoft lo cambia, el lector pasa a la voz local, intenta actualizar `edge-tts` una vez al día y avisa. También se puede forzar con `Configurar.exe /actualizar-voz`.
-- **Sin posición de cada palabra** (terminal de Orca, VS Code y otras apps Electron), el resaltado se muestra en la franja junto al puntero, no sobre el texto.
+- **Terminal de Orca:** el resaltado va sobre el texto gracias al OCR de Windows (local, sin internet), que ubica las palabras copiadas en la rejilla de la terminal. Si el texto se desplaza mientras se lee, el resaltado no lo sigue. Si la ubicación no es confiable (texto fuera de pantalla), se usa la franja.
+- **Sin posición de cada palabra** (VS Code y otras apps Electron), el resaltado se muestra en la franja junto al puntero.
 - No sigue la Lupa de Windows automáticamente: si la palabra resaltada queda fuera de la zona ampliada, hay que mover la vista.
 - **Con ventanas de administrador no funciona** si el lector no corre también como administrador: Windows bloquea leer otra ventana elevada y enviarle teclas.
 

@@ -600,14 +600,17 @@ namespace LectorKaraoke
                 actual.Palabras.Add(p);
                 if (f.Secreto) actual.TeniaSecretos = true;
 
-                // El primer trozo es corto (unas 8-12 palabras) para que la voz empiece rápido;
-                // mientras suena se sintetiza el resto.
-                bool primero = trozos.Count == 0;
-                int limite = primero ? 70 : 280;
+                // Trozos crecientes: el primero de unas 3 palabras para que la voz empiece cuanto antes
+                // (la espera del servidor crece con el largo del texto); mientras suena, se sintetizan los siguientes.
+                int n = trozos.Count;
+                int limite = n == 0 ? 22 : n == 1 ? 60 : n == 2 ? 140 : 280;
+                int minimo = n == 0 ? 10 : n == 1 ? 25 : 50;
                 char ult = f.Habla[f.Habla.Length - 1];
                 bool finOracion = ult == '.' || ult == '!' || ult == '?';
-                bool corte = (finOracion && sb.Length >= (primero ? 15 : 50))
-                          || (ult == ',' || ult == ';' || ult == ':') && sb.Length >= (primero ? 30 : limite - 40)
+                bool pausa = ult == ',' || ult == ';' || ult == ':';
+                bool corte = (finOracion && sb.Length >= minimo)
+                          || (n == 0 && actual.Palabras.Count >= 3 && sb.Length >= minimo)
+                          || (pausa && sb.Length >= Math.Max(minimo, limite - 40))
                           || sb.Length >= limite;
                 if (corte)
                 {
