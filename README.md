@@ -17,9 +17,13 @@ Pensado para personas que usan la Lupa de Windows con mucho aumento y no alcanza
 - **Nunca habla por su cuenta.** Solo cuando presionas la tecla.
 - **No abre ventanas:** un icono en la bandeja y una capa transparente que no recibe clics ni toma el foco.
 - **Voces neuronales:** por defecto *Rémy* (`fr-FR-RemyMultilingualNeural`), una voz multilingüe de Microsoft Edge que suena nativa en español y en inglés (ver la evaluación en [`docs/VOCES.md`](docs/VOCES.md)). Sin internet usa **Piper** (local, voz `es_MX-ald`). Si Piper falta, usa las voces de Windows.
-- **Cifras e inglés:** `25.000`, `25,000` y `25000` se leen "veinticinco mil"; los decimales usan la forma de la voz (coma en España, punto en México) y las versiones e IP se respetan. Los trozos en inglés se leen con una voz nativa.
+- **Cifras como las diría una persona:** `25.000` y `25,000` son "veinticinco mil"; `10-25` es "10 a 25"; `20/10/2026` es "20 de octubre de 2026"; `1.5GB` es "1,5 gigabytes"; `v2.3.1` es "versión 2 punto 3 punto 1"; `1º`, "primero"; `300 555 1234` se lee por grupos. Los trozos en inglés se leen con una voz nativa.
 - **Protege secretos:** contraseñas, tokens, claves de API, JWT, URIs con usuario y clave, y bloques de clave privada se dicen como "valor oculto" y **nunca** salen a internet.
-- **Lee bien textos técnicos:** separa `getUserById` → "get User By Id", nombra los símbolos ("abre comillas… cierra comillas", "barra", "numeral", "arroba"), lee las direcciones web como "enlace dominio" y omite códigos de color ANSI, cajas, spinners y decoraciones de markdown.
+- **Lee como JAWS, sin perder información:**
+  - Cada signo se nombra entre pausas cortas, para que se entienda sin ver el texto. Por ejemplo, `C:\Users\mi_carpeta (copia)` se lee "C, dos puntos barra invertida, Users, barra invertida, mi, guion bajo, carpeta, abre paréntesis, copia, cierra paréntesis".
+  - Las tablas se leen como "Tabla de 3 columnas y 2 filas…" y luego, fila por fila, "Encabezado, valor".
+  - Fechas, unidades y ordinales se dicen en palabras ("20 de octubre de 2026", "100 milisegundos", "primero").
+  - Detalle, mediciones y fuentes en [`docs/LECTURA.md`](docs/LECTURA.md).
 - **Portable:** todo vive en una carpeta. Para llevarlo a otro PC se copia la carpeta y se ejecuta `Configurar.exe`.
 - **Liviano:** en reposo no consume CPU y ocupa unos 35 MB de memoria. El motor de voz se cierra solo tras unos minutos sin uso.
 
@@ -58,10 +62,10 @@ El archivo se crea con valores comentados. **Al guardarlo, el lector lo recarga 
 | `tecla` | `F9` | `F1`..`F24`, `Pausa` o `BloqDespl`. Si la nueva está ocupada, se mantiene la anterior y se avisa |
 | `motor` | `edge` | `edge`, `piper` o `sapi` |
 | `usar_internet` | `si` | `no` = nunca enviar texto a internet |
-| `voz_edge` | `fr-FR-RemyMultilingualNeural` | También `es-MX-DaliaNeural`, `es-ES-AlvaroNeural`, `es-ES-ElviraNeural`, `es-ES-XimenaNeural`… |
+| `voz_edge` | `fr-FR-RemyMultilingualNeural` | Una sola voz. También `es-MX-DaliaNeural`, `es-ES-AlvaroNeural`, `es-ES-ElviraNeural`, `es-ES-XimenaNeural`… Un nombre mal escrito se avisa en la bandeja |
 | `voz_ingles` | *(vacío)* | Voz para los trozos en inglés; vacío = la principal (las multilingües leen ambos idiomas) |
 | `numeros` | `auto` | `auto`: `25.000` / `25,000` = veinticinco mil; `literal`: tal cual a la voz |
-| `velocidad` | `0` | En %, de `-50` a `100` |
+| `velocidad` | `0` | En %, de `-50` a `100`, o `lenta`, `normal`, `rápida`, `muy rápida` |
 | `volumen` | `100` | De 0 a 100 |
 | `color` | `naranja` | `#RRGGBB` o un nombre: naranja, azul, verde, rojo, morado, amarillo, cian, rosado |
 | `opacidad_actual` / `opacidad_leido` | `45` / `18` | Opacidad de la palabra actual y de las ya leídas |
@@ -69,8 +73,9 @@ El archivo se crea con valores comentados. **Al guardarlo, el lector lo recarga 
 | `marcar_leido` | `si` | Dejar marcadas las palabras ya leídas |
 | `ocr_terminal` / `ocr_programas` | `si` / `orca` | Ubicar las palabras con el OCR de Windows en terminales que no informan posiciones y resaltarlas sobre el texto |
 | `franja` / `franja_tamano` | `si` / `26` | Subtítulo junto al puntero cuando la aplicación no informa la posición de las palabras |
-| `simbolos` | `algunos` | `algunos` nombra comillas, paréntesis, llaves, corchetes y `/ \ \| # $ % & = @ * ¨ ~ ^ + < >` ("abre comillas… cierra comillas"); `todos` además punto, coma, interrogación, guiones; `no` no los nombra. Las decoraciones de markdown (`**`, `##`, `-----`) nunca se leen |
-| `leer_urls` | `dominio` | `dominio`, `completa` o `no` |
+| `simbolos` | `algunos` | `algunos`: nombra cada signo (abre paréntesis, guion bajo, barra invertida, ampersand…) entre pausas, como JAWS. `natural`: paréntesis y rayas como pausa y solo operadores, más fluido. `todos`: además coma, punto, etc. `no`: solo pausas |
+| `pausa_simbolos` | `media` | Pausa alrededor de cada signo nombrado: `media` (como una coma), `corta` (unos 60 ms) o `no` |
+| `leer_urls` | `completa` | `completa` (todo con sus signos, sin `https://`), `ruta` (dominio y partes, sin signos), `dominio` o `no` |
 | `espera_motor_min` | `5` | Minutos que el motor de voz se queda listo tras leer |
 | `registrar_texto` | `no` | `si` guarda el texto leído en el log (solo para diagnóstico) |
 | `[copiar]` | ver archivo | Atajo de copia por programa y lista de programas a los que nunca se les envía uno |
@@ -114,7 +119,7 @@ build.cmd
 Genera `LectorKaraoke.exe`, `Configurar.exe` y las pruebas. Usa el `csc.exe` de .NET Framework 4.8 que trae Windows.
 
 ## Pruebas
-- `tests\Pruebas.exe`: pruebas unitarias de preparación del texto, secretos, trozos, alineación de tiempos y configuración.
+- `tests\Pruebas.exe`: pruebas unitarias de preparación del texto (símbolos, cifras, URLs, rutas, tablas, Claude Code), secretos, trozos, alineación de tiempos y configuración.
 - `tests\PruebaMotores.exe`: síntesis real con los tres motores, cambio de motor ante fallos, cancelación, velocidad y reproducción.
 - `tests\integracion.ps1`: pruebas reales con el lector en modo `--prueba`. Cubre el Bloc de notas, Windows Terminal, la terminal de Orca, el modo mouse, el texto largo, las pulsaciones rápidas, cerrar la ventana a mitad de lectura y el resaltado en varios monitores con distinta escala. Verifica los píxeles naranjas en pantalla y espera a que no se esté usando el equipo.
 

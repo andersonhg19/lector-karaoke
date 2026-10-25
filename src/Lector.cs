@@ -121,25 +121,39 @@ namespace LectorKaraoke
             // con los motores locales, uno por delante para no saturar la CPU.
             int adelante = cfgLocal.Motor == "edge" && cfgLocal.UsarInternet ? 3 : 1;
             var tareas = new Task<Audio>[trozos.Count];
-            for (int k = 0; k < trozos.Count && k <= adelante - 1; k++) tareas[k] = motores.Sintetizar(trozos[k], cfgLocal, ct);
-            for (int i = 0; i < trozos.Count; i++)
+            int usados = 0;
+            try
             {
-                if (tareas[i] == null) tareas[i] = motores.Sintetizar(trozos[i], cfgLocal, ct);
-                Audio a = await tareas[i];
-                if (g != generacion) { MotorEdge.Borrar(a.Archivo); return; }
-                int siguienteK = i + adelante;
-                if (siguienteK < trozos.Count && tareas[siguienteK] == null) tareas[siguienteK] = motores.Sintetizar(trozos[siguienteK], cfgLocal, ct);
-                Prueba("audio", "trozo=" + i + "|motor=" + a.Motor + "|tiempos=" + string.Join(",", a.Trozo.Palabras.Select(p => (int)p.InicioMs)));
-                double inicioVoz = a.Trozo.Palabras.Count > 0 ? Math.Max(0, a.Trozo.Palabras[0].InicioMs - 40) : 0;
-                if (!rep.Abrir(a.Archivo, cfg.Volumen) || !rep.Reproducir(inicioVoz))
+                for (int k = 0; k < trozos.Count && k <= adelante - 1; k++) tareas[k] = motores.Sintetizar(trozos[k], cfgLocal, ct);
+                for (int i = 0; i < trozos.Count; i++)
                 {
+                    if (tareas[i] == null) tareas[i] = motores.Sintetizar(trozos[i], cfgLocal, ct);
+                    Audio a = await tareas[i];
+                    usados = i + 1;
+                    if (g != generacion) { MotorEdge.Borrar(a.Archivo); return; }
+                    int siguienteK = i + adelante;
+                    if (siguienteK < trozos.Count && tareas[siguienteK] == null) tareas[siguienteK] = motores.Sintetizar(trozos[siguienteK], cfgLocal, ct);
+                    Prueba("audio", "trozo=" + i + "|motor=" + a.Motor + "|tiempos=" + string.Join(",", a.Trozo.Palabras.Select(p => (int)p.InicioMs)));
+                    double inicioVoz = a.Trozo.Palabras.Count > 0 ? Math.Max(0, a.Trozo.Palabras[0].InicioMs - 40) : 0;
+                    if (!rep.Abrir(a.Archivo, cfg.Volumen) || !rep.Reproducir(inicioVoz))
+                    {
+                        MotorEdge.Borrar(a.Archivo);
+                        throw new Exception("no se pudo reproducir el audio (" + rep.UltimoError + ")");
+                    }
+                    await Seguir(g, cap, a.Trozo, ct);
+                    rep.Cerrar();
                     MotorEdge.Borrar(a.Archivo);
-                    throw new Exception("no se pudo reproducir el audio (" + rep.UltimoError + ")");
+                    if (g != generacion) return;
                 }
-                await Seguir(g, cap, a.Trozo, ct);
-                rep.Cerrar();
-                MotorEdge.Borrar(a.Archivo);
-                if (g != generacion) return;
+            }
+            finally
+            {
+                // Al detener, los trozos ya pedidos por adelantado terminan después: se borran sus audios.
+                for (int k = usados; k < tareas.Length; k++)
+                    if (tareas[k] != null)
+                    {
+                        var nop = tareas[k].ContinueWith(t => { if (t.Status == TaskStatus.RanToCompletion && t.Result != null) MotorEdge.Borrar(t.Result.Archivo); });
+                    }
             }
         }
 

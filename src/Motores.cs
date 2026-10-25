@@ -48,6 +48,7 @@ namespace LectorKaraoke
         private DateTime ultimoUso = DateTime.MinValue;
         private DateTime caidoHasta = DateTime.MinValue;
         private DateTime ultimaActualizacion = DateTime.MinValue;
+        private readonly Dictionary<string, DateTime> vocesFallidas = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private bool actualizando;
         private readonly System.Threading.Timer reloj;
         private int esperaMin = 5;
@@ -152,6 +153,11 @@ namespace LectorKaraoke
 
         public async Task<Audio> Sintetizar(Trozo t, Configuracion cfg, CancellationToken ct)
         {
+            string voz = VozPara(t, cfg);
+            DateTime hasta;
+            lock (candado)
+                if (vocesFallidas.TryGetValue(voz, out hasta) && DateTime.Now < hasta)
+                    throw new FalloMotor("voz", "la voz " + voz + " no respondió hace poco");
             Asegurar();
             ultimoUso = DateTime.Now;
             int id = Interlocked.Increment(ref siguienteId);
@@ -162,7 +168,7 @@ namespace LectorKaraoke
             var sb = new StringBuilder();
             sb.Append("{\"accion\":\"hablar\",\"id\":").Append(id)
               .Append(",\"texto\":").Append(Json(t.Texto))
-              .Append(",\"voz\":").Append(Json(VozPara(t, cfg)))
+              .Append(",\"voz\":").Append(Json(voz))
               .Append(",\"velocidad\":").Append(Json(vel))
               .Append(",\"archivo\":").Append(Json(archivo)).Append("}");
             try { Enviar(sb.ToString()); }
@@ -191,6 +197,13 @@ namespace LectorKaraoke
                 string tipo = r.ContainsKey("tipo") ? Convert.ToString(r["tipo"]) : "otro";
                 string err = r.ContainsKey("error") ? Convert.ToString(r["error"]) : "?";
                 if (tipo == "red") caidoHasta = DateTime.Now.AddSeconds(60);
+                if (tipo == "voz")
+                {
+                    // La voz no existe o está mal escrita: no se reintenta en cada trozo (las demás voces siguen).
+                    lock (candado) vocesFallidas[voz] = DateTime.Now.AddMinutes(2);
+                    var h = Aviso;
+                    if (h != null) h("La voz " + voz + " no respondió (¿nombre mal escrito en config.ini?). Se usa la voz local.");
+                }
                 if (tipo == "bloqueo")
                 {
                     caidoHasta = DateTime.Now.AddMinutes(10);
@@ -232,7 +245,7 @@ namespace LectorKaraoke
                 try
                 {
                     Liberar();
-                    var psi = new ProcessStartInfo(python, "-m pip install --upgrade --disable-pip-version-check --no-warn-script-location edge-tts")
+                    var psi = new ProcessStartInfo(python, "-I -m pip install --upgrade --disable-pip-version-check --no-warn-script-location edge-tts")
                     { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
                     using (var p = Process.Start(psi))
                     {
@@ -336,7 +349,7 @@ namespace LectorKaraoke
                     p.ErrorDataReceived += (s, e) => { };
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
-                    var b = Encoding.UTF8.GetBytes(t.Texto.Replace('\n', ' ').Replace('\r', ' ') + "\n");
+                    var b = Encoding.UTF8.GetBytes(MotorSapi.TextoLocal(t.Texto).Replace('\n', ' ').Replace('\r', ' ') + "\n");
                     p.StandardInput.BaseStream.Write(b, 0, b.Length);
                     p.StandardInput.Close();
                     var limite = DateTime.Now.AddSeconds(30);
@@ -389,7 +402,7 @@ namespace LectorKaraoke
                         int i = PalabraEnPos(t, e.CharacterPosition);
                         if (i >= 0 && t.Palabras[i].InicioMs < 0) t.Palabras[i].InicioMs = e.AudioPosition.TotalMilliseconds;
                     };
-                    var prompt = s.SpeakAsync(t.Texto);
+                    var prompt = s.SpeakAsync(TextoLocal(t.Texto));
                     while (!prompt.IsCompleted)
                     {
                         if (ct.IsCancellationRequested) { s.SpeakAsyncCancelAll(); break; }
@@ -424,6 +437,10 @@ namespace LectorKaraoke
             if (elegida == null) elegida = voces.FirstOrDefault(v => v.Culture.TwoLetterISOLanguageName == "es");
             if (elegida != null) s.SelectVoice(elegida.Name);
         }
+
+        // La mini pausa "·" la entienden las voces de Edge; Piper y SAPI podrían leerla: se cambia por una coma
+        // (mismo largo, así las posiciones de las palabras no cambian).
+        internal static string TextoLocal(string texto) { return texto.Replace('·', ','); }
 
         private static int PalabraEnPos(Trozo t, int pos)
         {

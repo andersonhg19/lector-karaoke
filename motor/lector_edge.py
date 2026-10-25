@@ -28,6 +28,9 @@ def clasificar(exc):
     estado = getattr(exc, "status", None)
     if estado in (401, 403, 429) or " 403" in texto or "403," in texto:
         return "bloqueo", texto
+    # Voz inexistente o mal escrita: el servicio responde sin audio.
+    if type(exc).__name__ == "NoAudioReceived":
+        return "voz", texto
     nombres = type(exc).__name__ + " " + " ".join(t.__name__ for t in type(exc).__mro__)
     if any(n in nombres for n in ("ClientConnectorError", "ServerTimeoutError", "TimeoutError",
                                   "ClientOSError", "gaierror", "ConnectionError", "ServerDisconnectedError")):

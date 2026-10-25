@@ -12,7 +12,7 @@ internal static class Pruebas
     private static int Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        var cfg = new Configuracion { Simbolos = "no" };   // las pruebas base van sin nombrar símbolos
+        var cfg = new Configuracion { Simbolos = "no", LeerUrls = "ruta" };   // las pruebas base van sin nombrar símbolos
 
         // ---------- Posiciones: cada palabra apunta a su texto original ----------
         {
@@ -45,11 +45,11 @@ internal static class Pruebas
         Contiene("camelCase", Habla("getUserById", cfg), "get User By Id");
         Contiene("snake_case", Habla("MAX_RETRY_COUNT", cfg), "MAX RETRY COUNT");
         Contiene("kebab", Habla("lector-karaoke", cfg), "lector karaoke");
-        Contiene("ruta windows", Habla(@"C:\Users\ander\Documents\archivo.java", cfg), "C Users ander Documents archivo.java");
-        Contiene("ruta unix", Habla("src/main/java/Servicio.java", cfg), "src main java Servicio.java");
-        Contiene("url dominio", Habla("mira https://www.github.com/andersonhg19/repo?x=1 ahora", cfg), "enlace github.com");
+        Contiene("ruta windows", Habla(@"C:\Users\ander\Documents\archivo.java", cfg), "disco C, Users, ander, Documents, archivo punto java");
+        Contiene("ruta unix", Habla("src/main/java/Servicio.java", cfg), "src, main, java, Servicio punto java");
+        Contiene("url con ruta", Habla("mira https://www.github.com/andersonhg19/repo?x=1 ahora", cfg), "enlace git hub punto com: andersonhg 19, repo ahora");
         Cierto("url sin ruta", !Habla("https://www.github.com/andersonhg19/repo", cfg).Contains("andersonhg19"));
-        Contiene("fecha intacta", Habla("el 2026-10-20 a las 12:30", cfg), "2026-10-20");
+        Contiene("fecha ISO en palabras", Habla("el 2026-10-20 a las 12:30", cfg), "el 20 de octubre de 2026 a las 12 y 30");
         Contiene("decimal intacto", Habla("vale 3.5 y 50%", cfg), "3.5");
         Contiene("porcentaje", Habla("vale 50%", cfg), "50%");
         Contiene("hash como código", Habla("commit a2a2b501a listo", cfg), "código");
@@ -150,23 +150,23 @@ Cierto("trozos: primero corto (" + p.Trozos[0].Texto.Length + ")", p.Trozos[0].T
 
         // ---------- Símbolos por su nombre ----------
         {
-            var sim = new Configuracion();     // predeterminado: "algunos"
-            Igual("símbolos: predeterminado", "algunos", sim.Simbolos);
-            Contiene("comillas", Habla("dijo \"hola mundo\" ayer", sim), "abre comillas hola mundo cierra comillas");
-            Contiene("paréntesis", Habla("valor (opcional) final", sim), "abre paréntesis opcional cierra paréntesis");
-            Contiene("llaves y corchetes", Habla("{a} [b]", sim), "abre llave a cierra llave abre corchete b cierra corchete");
-            Contiene("barra", Habla("si/no", sim), "si barra no");
-            Contiene("ruta con barras", Habla(@"C:\Users\x", sim), "C barra invertida Users barra invertida x");
-            Contiene("numeral", Habla("issue #123", sim), "numeral 123");
+            Igual("símbolos: predeterminado", "algunos", new Configuracion().Simbolos);
+            var sim = new Configuracion { Simbolos = "natural", LeerUrls = "ruta" };
+            Contiene("comillas: se callan", Habla("dijo \"hola mundo\" ayer", sim), "dijo hola mundo ayer");
+            Contiene("paréntesis: pausa", Habla("valor (opcional) final", sim), "valor, opcional, final");
+            Contiene("llaves mudas y corchetes con pausa", Habla("{a} [b]", sim), "a, b");
+            Contiene("barra entre palabras: alternativa", Habla("si/no", sim), "si o no");
+            Contiene("ruta sin decir barra", Habla(@"C:\Users\x", sim), "disco C, Users, x");
+            Contiene("número con #", Habla("issue #123", sim), "issue número 123");
             Contiene("arroba", Habla("correo@dominio", sim), "correo arroba dominio");
-            Contiene("igual y doble igual", Habla("a = b == c", sim), "a igual b doble igual c");
-            Contiene("ampersand doble", Habla("x && y", sim), "x doble ampersand y");
-            Contiene("asterisco suelto", Habla("2 * 3", sim), "2 asterisco 3");
+            Contiene("igual y doble igual", Habla("a = b == c", sim), "a igual b igual igual c");
+            Contiene("&& es y", Habla("x && z", sim), "x y z");
+            Contiene("asterisco entre números", Habla("2 * 3", sim), "2 por 3");
             Contiene("dólares con número", Habla("cuesta $100", sim), "dólares");
             Contiene("por ciento", Habla("50% listo", sim), "50%");
-            Contiene("diéresis y circunflejo", Habla("¨ ^", sim), "diéresis circunflejo");
+            Igual("diéresis y circunflejo sueltos se callan", "", Habla("¨ ^", sim));
             Contiene("archivo con punto", Habla("Config.java", sim), "Config punto java");
-            Contiene("interrogación en medio", Habla("url?x=1", sim), "url interrogación x igual 1");
+            Contiene("interrogación en medio se calla", Habla("url?x=1", sim), "url x igual 1");
             Contiene("pregunta normal sin nombrar", Habla("¿vienes hoy?", sim), "vienes hoy?");
             Cierto("pregunta normal: no dice 'interrogación'", !Habla("¿vienes hoy?", sim).Contains("interrogación"));
             Contiene("markdown negrita sin leer asteriscos", Habla("**importante** ya", sim), "importante ya");
@@ -175,8 +175,8 @@ Cierto("trozos: primero corto (" + p.Trozos[0].Texto.Length + ")", p.Trozos[0].T
             Cierto("encabezado markdown sin numeral", !Habla("## Resumen\nTexto", sim).Contains("numeral"));
             Cierto("viñeta sin leer", !Habla("- uno\n- dos", sim).Contains("guion"));
             Contiene("snake_case sin nombrar", Habla("MAX_RETRY", sim), "MAX RETRY");
-            Contiene("fecha intacta", Habla("el 2026-10-20", sim), "2026-10-20");
-            Contiene("url resumida", Habla("https://www.github.com/a/b", sim), "enlace github.com");
+            Contiene("fecha en palabras", Habla("el 2026-10-20", sim), "el 20 de octubre de 2026");
+            Contiene("url resumida", Habla("https://www.github.com/a/b", sim), "enlace git hub punto com: a, b");
             Cierto("secreto sigue oculto", Preparador.Preparar("password=Hola123xyz", sim).Secretos == 1 && !Habla("password=Hola123xyz", sim).Contains("Hola123"));
             // Posiciones intactas con símbolos.
             string s0 = "dijo \"hola\" (ya)";
@@ -188,6 +188,111 @@ Cierto("trozos: primero corto (" + p.Trozos[0].Texto.Length + ")", p.Trozos[0].T
             Contiene("todos: interrogación", Habla("¿sí?", todos), "abre interrogación sí interrogación");
             Contiene("todos: guion bajo", Habla("MAX_RETRY", todos), "MAX guion bajo RETRY");
             Contiene("todos: asteriscos de markdown", Habla("**x**", todos), "doble asterisco x doble asterisco");
+        }
+
+        // ---------- Lectura natural (NVDA en "some", RAE, lo que se oyó con las voces de Edge) ----------
+        {
+            var es = new Configuracion { VozEdge = "es-ES-AlvaroNeural", Simbolos = "natural", LeerUrls = "ruta" };
+            // Paréntesis, rayas y comillas: pausa o silencio, nunca "abre paréntesis".
+            Igual("paréntesis en prosa", "El modelo, versión 2, funciona mejor que el anterior, ver tabla.", Habla("El modelo (versión 2) funciona mejor que el anterior (ver tabla).", es));
+            Contiene("raya como inciso", Habla("fue clave — sobre todo en IA — y siguió", es), "fue clave, sobre todo en IA, y siguió");
+            Igual("comillas mudas", "Hola, dijo ella. Bien respondió él. Perfecto.", Habla("\"Hola\", dijo ella. 'Bien' respondió él. «Perfecto».", es));
+            Cierto("nunca 'abre paréntesis' por defecto", !Habla("f(x) [a] {b} \"c\"", es).Contains("abre"));
+            // Rangos, signos y opciones.
+            Contiene("rango con guion", Habla("páginas 10-25", es), "páginas 10 a 25");
+            Contiene("rango con raya corta", Habla("periodo 2020–2024", es), "periodo 2020 a 2024");
+            Contiene("negativo", Habla("bajó a -5 °C", es), "menos 5 grados Celsius");
+            Contiene("opción larga", Habla("git --help", es), "git guion guion help");
+            Contiene("opción corta", Habla("npm -v", es), "N P M guion v");
+            Contiene("opción con valor", Habla("--voz=Jorge", es), "guion guion voz igual Jorge");
+            Contiene("guion suelto en prosa = pausa", Habla("Notepad - Orca", es), "Notepad, Orca");
+            // Cifras, fechas, unidades, ordinales.
+            Contiene("fecha d/m/a", Habla("el 20/10/2026", es), "el 20 de octubre de 2026");
+            Contiene("versión", Habla("v2.3.1", es), "versión 2 punto 3 punto 1");
+            Contiene("unidad pegada", Habla("1.5GB en 100ms", es), "1,5 gigabytes en 100 milisegundos");
+            Contiene("unidad suelta", Habla("pesa 1 kg y 16 GB", es), "1 kilogramo y 16 gigabytes");
+            Contiene("multiplicador", Habla("3x más rápido", es), "3 veces más rápido");
+            Contiene("dimensión", Habla("1920x1080", es), "1920 por 1080");
+            Contiene("más menos", Habla("±2 dB", es), "más menos 2 decibelios");
+            Contiene("progreso", Habla("Tests (152/152)", es), "Tests, 152 de 152");
+            Contiene("fracción común: a la voz", Habla("1/2 taza", es), "1/2 taza");
+            Contiene("ordinales", Habla("1º y 2ª edición, 3er lugar", es), "primero y segunda edición, tercer lugar");
+            Contiene("romanos tras siglo", Habla("Siglo XXI, capítulo IV", es), "Siglo 21, capítulo 4");
+            Cierto("romano suelto no se toca", Habla("Yo vi a Juan", es).Contains("vi"));
+            Contiene("teléfono", Habla("Llama al 300 555 1234 hoy", es), "300, 555, 1234 hoy");
+            Contiene("dinero con centavos", Habla("cuesta $1,250.50", es), "1250 dólares con 50");
+            Contiene("miles no son versión", Habla("1.000.000 de usuarios", es), "1000000 de usuarios");
+            Contiene("abreviaturas", Habla("aprox. 5 min. Ver pág. 3 y núm. 7", es), "aproximadamente 5 minutos. Ver página 3 y número 7");
+            Contiene("p. ej.", Habla("por ejemplo: p. ej., una tabla", es), "por ejemplo, una tabla");
+            // URLs, correos, rutas, archivos.
+            Contiene("url con línea", Habla("https://github.com/a/repo/blob/main/x.cs#L120", es), "enlace git hub punto com: a, repo, blob, main, y 1 parte más, línea 120");
+            Contiene("url sin esquema", Habla("github.com/andersonhg19/lector-karaoke", es), "enlace git hub punto com: andersonhg 19, lector karaoke");
+            Contiene("url solo dominio", Habla("https://x.com/a/b", new Configuracion { LeerUrls = "dominio" }), "enlace x punto com");
+            Contiene("correo", Habla("soporte.tecnico@empresa.com.co", es), "soporte punto tecnico arroba empresa punto com punto co");
+            Contiene("carpeta personal", Habla("~/proyectos/app", es), "carpeta personal, proyectos, app");
+            Contiene("archivo y línea", Habla("Lector.cs:351", es), "Lector punto C S, línea 351");
+            Contiene("extensión pronunciable", Habla("config.json", es), "config punto json");
+            Contiene("una barra entre siglas", Habla("HTTP/2 y TCP/IP", es), "HTTP 2 y TCP IP");
+            Contiene("C# y .NET", Habla("C#/.NET", es), "C sharp punto net");
+            Contiene("enlace markdown: solo el texto", Habla("lee [la guía](https://x.com/guia) hoy", es), "lee la guía hoy");
+            // Código: operadores con nombre, delimitadores en silencio.
+            Contiene("operadores", Habla("if (x != null && y >= 0) return a => a * 2;", es), "x distinto de null y y mayor o igual que 0, return a flecha a por 2;");
+            Contiene("llamada sin argumentos", Habla("obtener() listo", es), "obtener listo");
+            // Markdown y salida de Claude Code.
+            Contiene("título y lista", Habla("## Resumen\n- uno\n- dos", es), "Resumen. uno. dos");
+            Contiene("negrita y código en línea", Habla("- **Captura**: usa `TextPattern` ya", es), "Captura: usa Text Pattern ya");
+            Contiene("herramienta de Claude Code", Habla("● Update(src/Captura.cs)\n  ⎿  Updated", es), "Edita src, Captura punto C S. Updated");
+            Igual("animación en silencio", "", Habla("✻ Thinking… (12s · esc to interrupt)", es));
+            Contiene("marcas de estado", Habla("✓ listo\n✗ Build failed", es), "listo listo. falla Build failed");
+            Cierto("pista de interfaz callada", !Habla("… +12 lines (ctrl+o to expand)", es).Contains("ctrl"));
+        }
+        // ---------- Tablas ----------
+        {
+            var es = new Configuracion { VozEdge = "es-ES-AlvaroNeural", Simbolos = "natural", LeerUrls = "ruta" };
+            string md = "| Archivo | Cambios | Estado |\n|---|---|---|\n| Captura.cs | 3 | ✓ |\n| Lector.cs | 12 | ✗ |";
+            Igual("tabla markdown", "Tabla de 3 columnas y 2 filas. Archivo, Cambios, Estado. Captura punto C S: Cambios, 3; Estado, listo. Lector punto C S: Cambios, 12; Estado, falla.",
+                Habla(md, es).Replace(" | ", " "));
+            string caja = "┌──────┬──────┐\n│ Clave│ Valor│\n├──────┼──────┤\n│ tecla│ F9   │\n│ voz  │ Rémy │\n└──────┴──────┘";
+            Igual("tabla de caja de 2 columnas: clave: valor", "Tabla de 2 columnas y 2 filas. Clave, Valor. tecla: F 9. voz: Rémy.", Habla(caja, es).Replace(" | ", " "));
+            string partida = "┌──────┬──────────┐\n│ Paso │ Detalle  │\n├──────┼──────────┤\n│ uno  │ primera  │\n│      │ segunda  │\n│ dos  │ otra     │\n└──────┴──────────┘";
+            Contiene("celda partida en dos líneas se lee seguida", Habla(partida, es).Replace(" | ", " "), "uno: primera segunda. dos: otra.");
+            Contiene("tabla de 2 filas: aviso", Habla(partida, es), "Tabla de 2 columnas y 2 filas.");
+            Cierto("recuadro de una columna no es tabla", !Habla("╭──────────╮\n│ Bienvenido │\n╰──────────╯", es).Contains("Tabla"));
+            // Las palabras de la tabla siguen apuntando a su texto original (para el resaltado).
+            foreach (var w in Preparador.Preparar(md, es).Trozos.SelectMany(t => t.Palabras))
+            {
+                string orig = md.Substring(w.OrigInicio, w.OrigLargo);
+                Cierto("tabla: posición de '" + orig + "'", orig.Length > 0 && orig.IndexOf('|') < 0 && orig.IndexOf('\n') < 0);
+            }
+            // simbolos = todos: lectura literal, para dictar.
+            Contiene("literal: paréntesis con nombre", Habla("valor (opcional)", new Configuracion { Simbolos = "todos" }), "abre paréntesis");
+        }
+
+        // ---------- Símbolos con nombre entre mini pausas (predeterminado, como JAWS "Most") ----------
+        {
+            var j = new Configuracion { VozEdge = "es-ES-AlvaroNeural", PausaSimbolos = "corta" };
+            Igual("paréntesis con nombre y mini pausa", "El modelo · abre paréntesis · versión 2 · cierra paréntesis · funciona.", Habla("El modelo (versión 2) funciona.", j));
+            Contiene("ruta con todos sus signos", Habla(@"C:\Users\ander\mi_carpeta", j), "C · dos puntos barra invertida · Users · barra invertida · ander · barra invertida · mi · guion bajo · carpeta");
+            Contiene("guion dentro de palabra", Habla("pre-entrenado", j), "pre · guion · entrenado");
+            Contiene("guion medio y raya", Habla("a – b — c", j), "a · guion medio · b · raya · c");
+            Contiene("ampersand y barra vertical", Habla("a & b | c", j), "a · ampersand · b · barra vertical · c");
+            Contiene("operador agrupado", Habla("x != y", j), "x · exclamación igual · y");
+            Contiene("opción", Habla("git --help", j), "git · doble guion · help");
+            Contiene("signo de número sin pausa", Habla("bajó a -5 y subió +3", j), "bajó a menos 5 y subió más 3");
+            Contiene("comillas con nombre", Habla("dijo \"hola\" ya", j), "dijo · abre comillas · hola · cierra comillas · ya");
+            Contiene("url completa", Habla("https://github.com/a/lector-karaoke?x=1", j), "enlace git hub punto com · barra · a · barra · lector · guion · karaoke · interrogación · x · igual · 1");
+            Contiene("correo", Habla("ana_b@x.com", j), "ana · guion bajo · b · arroba · x punto com");
+            Contiene("archivo y extensión", Habla("main.py", j), "main punto P Y");
+            Contiene("puntuación final solo pausa", Habla("Nota: listo, ya.", j), "Nota: listo, ya.");
+            Contiene("viñeta", Habla("- uno\n- dos", j), "viñeta · uno. viñeta · dos");
+            Contiene("línea decorativa", Habla("texto\n-----\nmás", j), "línea de guiones.");
+            Contiene("se conservan fechas y unidades", Habla("el 20/10/2026 en 100ms", j), "el 20 de octubre de 2026 en 100 milisegundos");
+            Contiene("pausa media = coma", Habla("El modelo (versión 2) funciona.", new Configuracion { PausaSimbolos = "media" }), "El modelo, abre paréntesis, versión 2, cierra paréntesis, funciona.");
+            Igual("sin pausa", "El modelo abre paréntesis versión 2 cierra paréntesis funciona.", Habla("El modelo (versión 2) funciona.", new Configuracion { PausaSimbolos = "no" }));
+            // Posiciones intactas con nombres.
+            string s0 = "ver (a_b) & C:\\x";
+            foreach (var w in Preparador.Preparar(s0, j).Trozos.SelectMany(t => t.Palabras))
+                Cierto("posición con nombres: '" + s0.Substring(w.OrigInicio, w.OrigLargo) + "'", w.OrigLargo > 0 && w.OrigInicio + w.OrigLargo <= s0.Length);
         }
 
         // ---------- Números ----------
@@ -203,10 +308,10 @@ Cierto("trozos: primero corto (" + p.Trozos[0].Texto.Length + ")", p.Trozos[0].T
             Contiene("decimal 3,5 en México", Habla("vale 3,5", mx), "3.5");
             Contiene("decimal 3.5 en España", Habla("vale 3.5", es), "3,5");
             Contiene("0,500 es decimal", Habla("pesa 0,500 kg", mx), "0.500");
-            Contiene("versión intacta", Habla("versión 1.2.3", mx), "1.2.3");
-            Contiene("IP intacta", Habla("host 192.168.0.1", mx), "192.168.0.1");
-            Contiene("fecha intacta", Habla("el 2026-10-20", mx), "2026-10-20");
-            Contiene("hora intacta", Habla("a las 12:30", mx), "12:30");
+            Contiene("versión con punto", Habla("versión 1.2.3", mx), "versión 1 punto 2 punto 3");
+            Contiene("IP con punto", Habla("host 192.168.0.1", mx), "192 punto 168 punto 0 punto 1");
+            Contiene("fecha en palabras (es-MX)", Habla("el 2026-10-20", mx), "el 20 de octubre de 2026");
+            Contiene("hora: 12 y 30", Habla("a las 12:30", mx), "a las 12 y 30");
             Contiene("moneda", Habla("cuesta $25,000", mx), "25000 dólares");
             Contiene("porcentaje", Habla("sube 12,5%", mx), "12.5%");
             Contiene("negativo", Habla("saldo -25.000", mx), "25000");
@@ -256,6 +361,17 @@ Cierto("trozos: primero corto (" + p.Trozos[0].Texto.Length + ")", p.Trozos[0].T
             Igual("config: predeterminado naranja", 140, (int)c3.ColorResaltado.G);
             Igual("config: voz predeterminada multilingüe", "fr-FR-RemyMultilingualNeural", c3.VozEdge);
             File.Delete(ruta2);
+        }
+        {
+            string r = Path.Combine(Path.GetTempPath(), "lk-voz-" + Guid.NewGuid().ToString("N") + ".ini");
+            File.WriteAllText(r, "[general]\nvoz_edge = es-ES-AlvaroNeural,es-MX-JorgeNeural\nvoz_ingles = en-US-AvaMultilingualNeural\nvelocidad = rápido\n");
+            var c = Configuracion.Cargar(r);
+            Igual("config: lista de voces rechazada", "fr-FR-RemyMultilingualNeural", c.VozEdge);
+            Igual("config: avisa la voz inválida", 1, c.Problemas.Count);
+            Igual("config: voz inglesa válida", "en-US-AvaMultilingualNeural", c.VozIngles);
+            Igual("config: velocidad 'rápido'", 25, c.Velocidad);
+            Cierto("config: voz con región", Configuracion.EsVozEdge("zh-CN-shaanxi-XiaoniNeural") && Configuracion.EsVozEdge("es-MX-JorgeNeural") && !Configuracion.EsVozEdge("Jorge"));
+            File.Delete(r);
         }
         {
             ushort[] v;

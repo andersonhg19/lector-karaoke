@@ -33,8 +33,9 @@ namespace LectorKaraoke
         public HashSet<string> OcrProgramas = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "orca" };
         public int FranjaTamano = 26;               // puntos
 
-        public string LeerUrls = "dominio";         // dominio | completa | no
-        public string Simbolos = "algunos";         // no | algunos | todos
+        public string LeerUrls = "completa";        // completa | ruta | dominio | no
+        public string Simbolos = "algunos";         // algunos (nombra con mini pausas) | natural | todos | no
+        public string PausaSimbolos = "media";      // media (como una coma) | corta | no
         public string Numeros = "auto";             // auto | literal
         public int MaxCaracteres = 30000;
         public int EsperaMotorMin = 30;
@@ -124,11 +125,22 @@ namespace LectorKaraoke
                     else Problemas.Add("Línea " + linea + ": motor '" + valor + "' no existe (edge, piper o sapi).");
                     break;
                 case "usar_internet": UsarInternet = Booleano(valor, linea, UsarInternet); break;
-                case "voz_edge": if (valor.Length > 0) VozEdge = valor; break;
-                case "voz_ingles": VozIngles = valor; break;
+                case "voz_edge":
+                    if (valor.Length == 0) break;
+                    if (EsVozEdge(valor)) VozEdge = valor;
+                    else Problemas.Add("Línea " + linea + ": voz_edge '" + valor + "' no es un nombre de voz (una sola, p. ej. es-MX-JorgeNeural). Se usa " + VozEdge + ".");
+                    break;
+                case "voz_ingles":
+                    if (valor.Length == 0 || EsVozEdge(valor)) VozIngles = valor;
+                    else Problemas.Add("Línea " + linea + ": voz_ingles '" + valor + "' no es un nombre de voz (una sola, p. ej. en-US-AvaMultilingualNeural).");
+                    break;
                 case "voz_piper": if (valor.Length > 0) VozPiper = valor; break;
                 case "voz_sapi": VozSapi = valor; break;
-                case "velocidad": Velocidad = Entero(valor, -50, 100, linea, Velocidad); break;
+                case "velocidad":
+                    int alias;
+                    if (VelocidadConNombre(valor, out alias)) Velocidad = alias;
+                    else Velocidad = Entero(valor, -50, 100, linea, Velocidad);
+                    break;
                 case "volumen": Volumen = Entero(valor, 0, 100, linea, Volumen); break;
                 case "color":
                     Color col;
@@ -149,13 +161,18 @@ namespace LectorKaraoke
                 case "franja_tamano": FranjaTamano = Entero(valor, 10, 96, linea, FranjaTamano); break;
                 case "leer_urls":
                     string u = valor.ToLowerInvariant();
-                    if (u == "dominio" || u == "completa" || u == "no") LeerUrls = u;
-                    else Problemas.Add("Línea " + linea + ": leer_urls debe ser dominio, completa o no.");
+                    if (u == "ruta" || u == "dominio" || u == "completa" || u == "no") LeerUrls = u;
+                    else Problemas.Add("Línea " + linea + ": leer_urls debe ser ruta, dominio, completa o no.");
                     break;
                 case "simbolos":
                     string sm = valor.ToLowerInvariant();
-                    if (sm == "no" || sm == "algunos" || sm == "todos") Simbolos = sm;
-                    else Problemas.Add("Línea " + linea + ": simbolos debe ser no, algunos o todos.");
+                    if (sm == "no" || sm == "algunos" || sm == "natural" || sm == "todos") Simbolos = sm;
+                    else Problemas.Add("Línea " + linea + ": simbolos debe ser algunos, natural, todos o no.");
+                    break;
+                case "pausa_simbolos":
+                    string ps = valor.ToLowerInvariant();
+                    if (ps == "corta" || ps == "media" || ps == "no") PausaSimbolos = ps;
+                    else Problemas.Add("Línea " + linea + ": pausa_simbolos debe ser corta, media o no.");
                     break;
                 case "numeros":
                     string nu = valor.ToLowerInvariant();
@@ -167,6 +184,26 @@ namespace LectorKaraoke
                 case "registrar_texto": RegistrarTexto = Booleano(valor, linea, RegistrarTexto); break;
                 default: Problemas.Add("Línea " + linea + ": opción desconocida '" + clave + "'."); break;
             }
+        }
+
+        // Una sola voz de Edge: idioma-PAÍS-NombreNeural (es-MX-JorgeNeural, fr-FR-RemyMultilingualNeural, zh-CN-shaanxi-XiaoniNeural).
+        private static readonly System.Text.RegularExpressions.Regex VozValida =
+            new System.Text.RegularExpressions.Regex(@"^[a-z]{2,3}-[A-Z]{2}(?:-[a-z]+)?-[A-Za-z]+Neural$");
+
+        public static bool EsVozEdge(string v) { return VozValida.IsMatch(v); }
+
+        private static bool VelocidadConNombre(string v, out int n)
+        {
+            switch (v.Trim().ToLowerInvariant())
+            {
+                case "normal": n = 0; return true;
+                case "lenta": case "lento": n = -20; return true;
+                case "muy lenta": case "muy lento": n = -40; return true;
+                case "rapida": case "rápida": case "rapido": case "rápido": n = 25; return true;
+                case "muy rapida": case "muy rápida": case "muy rapido": case "muy rápido": n = 50; return true;
+            }
+            n = 0;
+            return false;
         }
 
         private bool Booleano(string v, int linea, bool def)
@@ -317,16 +354,21 @@ ocr_terminal = si
 ocr_programas = orca
 
 [avanzado]
-; Leer los símbolos por su nombre:
-;   no      = no se nombran (solo hacen pausa)
-;   algunos = comillas, paréntesis, llaves, corchetes y / \ | # $ % & = @ * ¨ ~ ^ + < > (abre comillas ... cierra comillas)
-;   todos   = además punto, coma, interrogación, guiones, etc.
+; Cómo leer los símbolos:
+;   algunos = como JAWS: se nombra cada signo (abre paréntesis, barra invertida, guion bajo, ampersand...)
+;             entre mini pausas para que se entienda; la puntuación normal (. , ; : ? !) solo hace pausa
+;   natural = como una persona: paréntesis y rayas son pausa; comillas y llaves se callan; solo operadores
+;   todos   = además nombra la puntuación normal (coma, punto...): para dictar algo exacto
+;   no      = solo pausas
 simbolos = algunos
+; Pausa alrededor de cada signo nombrado: media (como una coma), corta (casi imperceptible; a mucha velocidad puede juntar palabras) o no
+pausa_simbolos = media
 ; Cifras: auto = 25.000, 25,000 y 25000 se leen veinticinco mil (3 cifras tras un separador = miles);
 ; literal = se pasan tal cual a la voz, como hacen los lectores de pantalla clásicos
 numeros = auto
-; Cómo leer las direcciones web: dominio, completa o no
-leer_urls = dominio
+; Direcciones web: completa = todo con sus signos (barra, guion, interrogación, igual), sin el https://;
+; ruta = dominio y partes de la ruta sin signos; dominio = solo el dominio; no = solo la palabra enlace
+leer_urls = completa
 max_caracteres = 30000
 ; Minutos que el motor de voz se queda listo después de leer (0 = cerrarlo enseguida)
 espera_motor_min = 30

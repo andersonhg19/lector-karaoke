@@ -64,3 +64,22 @@ LectorKaraoke.exe --reiniciar --prueba
 powershell -ExecutionPolicy Bypass -File tests\integracion.ps1 -Caso todos -Espacio <carpeta de un espacio de trabajo de Orca>
 ```
 La integración abre el Bloc de notas, Windows Terminal y una pestaña de Orca, envía F9 y toma capturas. Espera a que no se use el teclado ni el mouse durante 12 s antes de cada caso.
+
+## Lectura natural (versión 1.2, 25-10-2026)
+- **Unitarias:** 218 / 218. Se añadieron unas 60 reglas de lectura: paréntesis como pausa, rangos, opciones `--x`, operadores, fechas, unidades, ordinales, teléfonos, abreviaturas, URLs, rutas, tablas markdown y de caja, y líneas de Claude Code. Las palabras de una tabla siguen apuntando a su texto original.
+- **Motores:** 24 / 24. Una voz mal escrita ya no bloquea las demás voces de Edge.
+- **Escucha automática:** 19 frases difíciles se sintetizaron con Álvaro y Rémy y se transcribieron con Whisper large-v3, antes y después del cambio.
+  - **Corregido:** rangos ("10 a 25"), "menos 5 grados Celsius", "más menos 2 decibelios", "tres veces", "línea 351", ordinales, "guion guion help", pausas en lugar de paréntesis, y "14 y 30" (antes Álvaro decía "las 2 del mediodía y 30").
+  - **Comprobado:** el servicio de Edge rechaza SSML inyectado (`<break>`, `<prosody>`, `<say-as>`).
+- **Textos largos:** el README, el plan y un archivo de código se preparan en 4 a 30 ms (320 ms la primera vez, al compilar las expresiones regulares), sin posiciones fuera de rango.
+
+Reglas y fuentes: [`LECTURA.md`](LECTURA.md).
+
+### Símbolos con nombre (versión 1.3, 25-10-2026)
+- **Cambio:** el usuario necesita saber qué signos hay en el texto. Volvió el nombre de cada signo, como en JAWS, ahora entre pausas.
+- **Unitarias:** 240 / 240. Se añadieron pruebas del modo con nombres, de la pausa media, corta y ninguna, y de que las posiciones se conservan.
+- **Pausas medidas con la voz real** (+50 %): `·` unos 60 ms, coma unos 200 ms.
+- **Escucha con Whisper:**
+  - La pausa corta junta palabras a esa velocidad.
+  - La media se entiende entera, por eso es la predeterminada.
+  - El `·` no se pronuncia.
