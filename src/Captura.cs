@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -401,11 +402,19 @@ namespace LectorKaraoke
         public static string CopiarSeleccion(ushort[] atajo, IntPtr ventana)
         {
             string resultado = null;
-            var hilo = new Thread(() => { resultado = CopiarSta(atajo, ventana); }) { IsBackground = true, Name = "portapapeles" };
+            var hilo = new Thread(() => { resultado = CopiarProtegido(atajo, ventana); }) { IsBackground = true, Name = "portapapeles" };
             hilo.SetApartmentState(ApartmentState.STA);
             hilo.Start();
             if (!hilo.Join(4000)) Registro.Aviso("La copia de la selección tardó demasiado.");
             return resultado;
+        }
+
+        // Un fallo nativo de otra app en el portapapeles no debe cerrar el lector.
+        [HandleProcessCorruptedStateExceptions]
+        private static string CopiarProtegido(ushort[] atajo, IntPtr ventana)
+        {
+            try { return CopiarSta(atajo, ventana); }
+            catch (Exception e) { Registro.Error("Copiando la selección", e); return null; }
         }
 
         private static string CopiarSta(ushort[] atajo, IntPtr ventana)
@@ -449,6 +458,16 @@ namespace LectorKaraoke
             return null;
         }
 
+        // Formatos de identificador (imagen, metarchivo) y de objetos OLE incrustados (Excel, Word):
+        // al volver a ponerlos con OleFlushClipboard el proceso muere (violación de acceso en ole32).
+        // Windows recrea Bitmap a partir de DeviceIndependentBitmap, que sí se guarda.
+        private static readonly HashSet<string> NoRestaurables = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Bitmap", "MetaFilePict", "EnhancedMetafile", "Palette",
+            "Embed Source", "Embedded Object", "Link Source", "Link Source Descriptor",
+            "Object Descriptor", "Link", "ObjectLink", "OwnerLink", "Native"
+        };
+
         private static List<KeyValuePair<string, object>> Guardar()
         {
             var lista = new List<KeyValuePair<string, object>>();
@@ -461,6 +480,7 @@ namespace LectorKaraoke
                     if (d == null) return lista;
                     foreach (var f in d.GetFormats(false))
                     {
+                        if (NoRestaurables.Contains(f)) continue;
                         try
                         {
                             object o = d.GetData(f, false);
